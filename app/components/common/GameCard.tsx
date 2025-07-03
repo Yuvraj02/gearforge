@@ -16,7 +16,7 @@ function GameCard(props:CardProps) {
     const imageUrl : string = `https://images.igdb.com/igdb/image/upload/t_720p/${props.game.cover.image_id}.jpg`
 
     console.log(imageUrl)
-    return (<div className="h-54 w-54 rounded-xl flex flex-col">
+    return (<div className="h-54 w-54 rounded-2xl flex flex-col">
         <Image className ="h-full w-full rounded-2xl" src={imageUrl} height={1280} width={720} alt="Image banner"/>
         <div></div>
     </div>)
