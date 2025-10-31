@@ -28,8 +28,8 @@ export default function TournamentPage() {
   const queryClient = useQueryClient();
 
   /** TODO: Replace with your real auth/user fetch */
-  const userRole: "admin" | "organizer" | "player" = "admin"; // set from your session/user API
-  const canEdit = userRole !== "player";
+  const userRole: "admin" | "player" = "admin"; // set from your session/user API
+  const canEdit = userRole === "admin";
 
   const [activeTab, setActiveTab] = React.useState<"participants" | "leaderboard">("participants");
   const [finished, setFinished] = React.useState(false);

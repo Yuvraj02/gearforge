@@ -1,5 +1,4 @@
 import Carousel from "./Carousel";
-import HighestRated from "./sections/HighestRated";
 import Popular from "./sections/Popular";
 
 function HomePage() {
