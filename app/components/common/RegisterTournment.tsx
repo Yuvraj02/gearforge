@@ -7,8 +7,25 @@ import PlayerForm, { NewPlayer } from "./register/PlayerForm";
 import PlayersList, { PlayerRow } from "./register/PlayersList";
 import ConfirmModal from "./register/ConfirmModal";
 import Guidelines from "./register/Guidlines";
+import type { AxiosError } from "axios"; // type-only import for guards
 
-// Basic Tournament model you provided
+// ---------- typed helpers (no `any`) ----------
+function isAxiosError<T = unknown>(err: unknown): err is AxiosError<T> {
+  return typeof err === "object" && err !== null && "isAxiosError" in err;
+}
+
+function extractStatus(err: unknown): number | null {
+  if (isAxiosError(err)) {
+    return err.response?.status ?? null;
+  }
+  if (typeof err === "object" && err !== null) {
+    const e = err as { status?: number; cause?: { status?: number } };
+    return e.status ?? e.cause?.status ?? null;
+  }
+  return null;
+}
+// ---------------------------------------------
+
 export type Tournament = {
   tournament_id: string;
   name: string;
@@ -33,8 +50,8 @@ export type Tournament = {
 };
 
 type Props = {
-  tournamentId?: string;              // optional; keep drop-in compatibility
-  preset?: Partial<Tournament>;       // allow passing sizes if you have them handy
+  tournamentId?: string;
+  preset?: Partial<Tournament>;
 };
 
 type ValidateResponse = {
@@ -44,19 +61,16 @@ type ValidateResponse = {
 };
 
 export default function RegisterTournament({ tournamentId, preset }: Props) {
-  // Logged-in user (captain)
   const me = useAppSelector((s) => s.users.user);
 
-  // Team size limits (fallbacks if not provided yet)
   const maxSize = preset?.max_team_size ?? 5;
   const minSize = preset?.min_team_size ?? 3;
-  const requiredDivision = preset?.tournament_division ?? 3; // optional
+  // const requiredDivision = preset?.tournament_division ?? 3; // keep if you’ll show it
 
   const [teamName, setTeamName] = React.useState("");
   const [adding, setAdding] = React.useState(false);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
 
-  // Build initial captain row (verified & read-only)
   const captain: PlayerRow = {
     email: me?.email ?? "",
     username: me?.user_name ?? "",
@@ -69,25 +83,29 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
   const currentCount = players.length;
 
   // ---- VALIDATE PLAYER (Add) ----
-  const validateMutation = useMutation({
+  const validateMutation = useMutation<ValidateResponse, unknown, NewPlayer>({
     mutationKey: ["validate_player", tournamentId],
     mutationFn: async (p: NewPlayer): Promise<ValidateResponse> => {
+      console.log(p)
       // ******* CONNECT ENDPOINT HERE *******
-      // Example shape (replace with your real call):
-      // const res = await axios.post(`/api/tournaments/${tournamentId}/validate`, {
+      // const res = await axios.post(`/api/tournaments/${tournamentId}/validate-player`, {
       //   email: p.email, username: p.username
       // });
       // return res.data as ValidateResponse;
 
-      // Temporary optimistic OK so UI works until you connect:
-      return Promise.resolve({ ok: true, eligible: true });
+      // Temp OK so UI works until backend is wired:
+      return { ok: true, eligible: true };
     },
   });
 
   const addPlayer = async (p: NewPlayer) => {
-    // Local checks before hitting server
     if (currentCount >= maxSize) return;
-    if (players.some((x) => x.username.toLowerCase() === p.username.toLowerCase())) {
+
+    // prevent duplicate usernames locally
+    const exists = players.some(
+      (x) => x.username.toLowerCase() === p.username.toLowerCase()
+    );
+    if (exists) {
       alert("This username is already on the team.");
       return;
     }
@@ -105,7 +123,6 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
             note: resp.note,
           },
         ]);
-        setAdding(false);
       } else {
         setPlayers((prev) => [
           ...prev,
@@ -117,16 +134,9 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
             note: resp.note ?? "Division ineligible for this tournament.",
           },
         ]);
-        setAdding(false);
       }
-    } catch (e) {
-      // Map common server codes: 404 → not registered, 409/400 → division mismatch, 500 → generic
-      // Replace with your error object shape if needed
-      const status =
-        (e as any)?.response?.status ??
-        (e as any)?.status ??
-        (e as any)?.cause?.status ??
-        null;
+    } catch (e: unknown) {
+      const status = extractStatus(e);
 
       if (status === 404) {
         alert(
@@ -147,6 +157,7 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
               : "Verification failed",
         },
       ]);
+    } finally {
       setAdding(false);
     }
   };
@@ -158,26 +169,26 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
   const canProceed =
     players.length >= minSize &&
     players.length <= maxSize &&
-    players.every((p) => p.status === "verified"); // all verified (including captain)
+    players.every((p) => p.status === "verified") &&
+    teamName.trim().length > 0;
 
   // ---- FINAL REGISTRATION ----
-  const registerMutation = useMutation({
+  const registerMutation = useMutation<{ ok: boolean }, unknown, void>({
     mutationKey: ["register_team", tournamentId],
     mutationFn: async () => {
       // ******* CONNECT ENDPOINT HERE *******
-      // Example payload:
-      // const res = await axios.post(`/api/tournaments/${tournamentId}/register`, {
-      //   team_name: teamName,
+      // const res = await axios.post(`/api/tournaments/${tournamentId}/register-team`, {
+      //   team_name: teamName.trim(),
       //   members: players.map(p => ({ email: p.email, username: p.username, role: p.role })),
       // });
-      // return res.data;
-      return Promise.resolve({ ok: true });
+      // return res.data as { ok: boolean };
+
+      return { ok: true };
     },
     onSuccess: () => {
-      // TODO: handoff to payment gateway
-      // router.push(`/payments/checkout?t=${tournamentId}`);
       alert("Registration confirmed. Redirecting to payment gateway...");
       setConfirmOpen(false);
+      // router.push(`/payments/checkout?t=${tournamentId}`);
     },
   });
 
@@ -236,12 +247,7 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
           </button>
         )}
 
-        {adding && (
-          <PlayerForm
-            onAdd={addPlayer}
-            onCancel={() => setAdding(false)}
-          />
-        )}
+        {adding && <PlayerForm onAdd={addPlayer} onCancel={() => setAdding(false)} />}
 
         {/* Guidelines */}
         <Guidelines />
@@ -249,19 +255,17 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
         {/* Submit Button */}
         <div className="pt-2">
           <button
-            disabled={!canProceed || !teamName.trim()}
+            disabled={!canProceed}
             onClick={() => setConfirmOpen(true)}
             className={`px-4 py-2 rounded-xl ${
-              !canProceed || !teamName.trim()
+              !canProceed
                 ? "bg-[#222327] text-gray-500 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-500 text-white"
             }`}
             title={
               !teamName.trim()
                 ? "Enter your exact in-game team name"
-                : !canProceed
-                ? `You must have between ${minSize} and ${maxSize} verified players`
-                : undefined
+                : `You must have between ${minSize} and ${maxSize} verified players`
             }
           >
             Review & Register
@@ -277,7 +281,7 @@ export default function RegisterTournament({ tournamentId, preset }: Props) {
         teamName={teamName}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() => registerMutation.mutate()}
-        disabled={!canProceed || !teamName.trim()}
+        disabled={!canProceed}
       />
     </div>
   );

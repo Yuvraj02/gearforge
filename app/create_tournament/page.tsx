@@ -10,7 +10,8 @@ export default function CreateTournamentPage() {
   const [name, setName] = useState("")
   const [cover, setCover] = useState("") // URL
   const [gameCategory, setGameCategory] = useState<string>("CAT_BR") // dropdown
-  const [teamSize, setTeamSize] = useState<number>(1)
+  const [minTeamSize, setMinTeamSize] = useState<number>(1)
+  const [maxTeamSize, setMaxTeamSize] = useState<number>(1)
   const [totalSlots, setTotalSlots] = useState<number>(8)
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
@@ -35,8 +36,16 @@ export default function CreateTournamentPage() {
       setError("Start date must be before end date.")
       return false
     }
-    if (teamSize <= 0) {
-      setError("Team size must be at least 1.")
+    if (minTeamSize < 1) {
+      setError("Min team size must be at least 1.")
+      return false
+    }
+    if (maxTeamSize < 1) {
+      setError("Max team size must be at least 1.")
+      return false
+    }
+    if (minTeamSize > maxTeamSize) {
+      setError("Min team size cannot be greater than max team size.")
       return false
     }
     if (totalSlots <= 0) {
@@ -53,9 +62,15 @@ export default function CreateTournamentPage() {
     setSaving(true)
 
     const nowIso = new Date().toISOString()
-    const id = uuidv4() // Type-safe UUID generation
+    const id = uuidv4()
 
-    const payload: Omit<Partial<Tournament>, 'created_at' | 'updated_at' | 'tournament_date'> & { tournament_id: string; created_at: string; updated_at: string; tournament_date?: string } = {
+    // Keep the same payload style you already use; just include min/max team sizes.
+    const payload: Omit<Partial<Tournament>, 'created_at' | 'updated_at' | 'tournament_date'> & {
+      tournament_id: string
+      created_at: string
+      updated_at: string
+      tournament_date?: string
+    } = {
       tournament_id: id,
       name: name.trim(),
       game_category: gameCategory,
@@ -63,7 +78,8 @@ export default function CreateTournamentPage() {
       end_date: new Date(endDate),
       tournament_date: new Date(startDate).toISOString(),
       cover: cover.trim() || undefined,
-      team_size: Number(teamSize),
+      max_team_size: Number(maxTeamSize),
+      min_team_size: Number(minTeamSize),
       total_slots: Number(totalSlots),
       registered_slots: 0,
       registered_id: undefined,
@@ -77,8 +93,9 @@ export default function CreateTournamentPage() {
       status: "upcoming",
     }
 
+
+    // API CHANGES TO BE MADE HERE-> BACKEND CODE WILL BE JOINED HERE
     try {
-      // send JSON to API (replace endpoint with your server handler)
       await fetch("/api/tournaments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,13 +106,19 @@ export default function CreateTournamentPage() {
 
       // also persist locally for dev/testing
       const key = "tournaments_local_additions"
-      const existing = JSON.parse(sessionStorage.getItem(key) ?? "[]")
-      existing.push(payload)
-      sessionStorage.setItem(key, JSON.stringify(existing))
+      const existingRaw = sessionStorage.getItem(key)
+      const existing: unknown = existingRaw ? JSON.parse(existingRaw) : []
+      const asArray = Array.isArray(existing) ? existing : []
+      asArray.push(payload)
+      sessionStorage.setItem(key, JSON.stringify(asArray))
 
       router.push("/tournaments")
     } catch (err) {
-      setError(`Failed to save tournament: ${(err as Error).message ?? err}`)
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message?: string }).message ?? "Unknown error")
+          : "Unknown error"
+      setError(`Failed to save tournament: ${message}`)
       setSaving(false)
       return
     }
@@ -146,12 +169,29 @@ export default function CreateTournamentPage() {
             </select>
           </div>
 
+          {/* NEW: Min team size */}
           <div>
-            <label className="text-sm text-neutral-300">Team size</label>
+            <label className="text-sm text-neutral-300">Min team size</label>
             <input
               type="number"
-              value={teamSize}
-              onChange={(e) => setTeamSize(Math.max(1, Number(e.target.value || 1)))}
+              value={minTeamSize}
+              onChange={(e) =>
+                setMinTeamSize(Math.max(1, Number(e.target.value || 1)))
+              }
+              className="w-full mt-1 px-3 py-2 rounded bg-neutral-800 text-white"
+              min={1}
+            />
+          </div>
+
+          {/* NEW: Max team size */}
+          <div>
+            <label className="text-sm text-neutral-300">Max team size</label>
+            <input
+              type="number"
+              value={maxTeamSize}
+              onChange={(e) =>
+                setMaxTeamSize(Math.max(1, Number(e.target.value || 1)))
+              }
               className="w-full mt-1 px-3 py-2 rounded bg-neutral-800 text-white"
               min={1}
             />
@@ -162,7 +202,9 @@ export default function CreateTournamentPage() {
             <input
               type="number"
               value={totalSlots}
-              onChange={(e) => setTotalSlots(Math.max(1, Number(e.target.value || 1)))}
+              onChange={(e) =>
+                setTotalSlots(Math.max(1, Number(e.target.value || 1)))
+              }
               className="w-full mt-1 px-3 py-2 rounded bg-neutral-800 text-white"
               min={1}
             />
@@ -230,7 +272,9 @@ export default function CreateTournamentPage() {
             disabled={saving}
             className={
               "px-4 py-2 rounded font-medium " +
-              (saving ? "bg-neutral-700 text-neutral-300 cursor-not-allowed" : "bg-amber-600 text-black")
+              (saving
+                ? "bg-neutral-700 text-neutral-300 cursor-not-allowed"
+                : "bg-amber-600 text-black")
             }
           >
             {saving ? "Saving…" : "Create Tournament"}
