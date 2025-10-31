@@ -1,127 +1,169 @@
-'use client'
+'use client';
 
-import DraggableScroll from "@/app/components/common/DraggableScroll";
-import GameCard from "@/app/components/common/GameCard";
-import LoadingSpinner from "@/app/components/common/LoadingSpinner";
-import { GameCardModel } from "@/app/models/game_card_model";
-import { CoverArt } from "@/app/models/cover_art_model";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { useCoversQuery } from "./hooks/game";
+import { useEffect } from 'react';
+import { useInView } from 'react-intersection-observer';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import GameCard from '@/app/components/common/GameCard';
+import LoadingSpinner from '@/app/components/common/LoadingSpinner';
+import { GameCardModel } from '@/app/models/game_card_model';
+import { CoverArt } from '@/app/models/cover_art_model';
 
+// --- Type Definitions ---
 interface Popularity {
   id: number;
   game_id: number;
   value: number;
-  popularity_source?: number;
-  external_popularity_source?: number;
   [key: string]: number | string | undefined;
+}
+type GameWithCover = GameCardModel & { cover?: CoverArt };
+interface Page<T> {
+  data: T[];
+  nextCursor?: number;
 }
 
 const apiKey: string = process.env.NEXT_PUBLIC_API_ACCESS_TOKEN!;
-// const clientId = '8t38bg3wjw6cfu643bmvww73yp3d0h';
-const clientId : string = process.env.NEXT_PUBLIC_IGDB_CLIENT_ID!;
+const clientId: string = process.env.NEXT_PUBLIC_IGDB_CLIENT_ID!;
+const GAMES_PER_PAGE = 12;
+const POPULARITY_FETCH_LIMIT = 50;
 
-function Popular() {
-  // 1) Get popularity primitives (grab extra rows so we can dedupe to 10)
-  const popularQuery = useQuery({
-    queryKey: ['popular_games'],
-    queryFn: async () => {
-      const { data } = await axios.post<Popularity[]>(
-        '/api/igdb/popularity_primitives',
-        'fields id,game_id,value; sort value desc; limit 50;',
-        {
-          headers: {
-            'Client-ID': clientId,
-            Authorization: 'Bearer ' + apiKey,
-          },
-        }
-      );
-      return data;
-    },
-    staleTime: 60_000,
-  });
-
-  // 2) Build first 10 unique IDs, preserving popularity order
-  const orderedUniqueIds: number[] = (() => {
-    if (!popularQuery.isFetched || !Array.isArray(popularQuery.data)) return [];
-    const seen = new Set<number>();
-    const out: number[] = [];
-    for (const p of popularQuery.data) {
-      const id = Number(p.game_id);
-      if (Number.isFinite(id) && !seen.has(id)) {
-        seen.add(id);
-        out.push(id);
-        if (out.length >= 10) break;
-      }
+const fetchPopularGames = async ({ pageParam = 0 }): Promise<Page<GameWithCover>> => {
+  const { data: popularData } = await axios.post<Popularity[]>(
+    '/api/igdb/popularity_primitives',
+    `fields id,game_id,value; sort value desc; limit ${POPULARITY_FETCH_LIMIT}; offset ${pageParam};`,
+    {
+      headers: { 'Client-ID': clientId, Authorization: 'Bearer ' + apiKey },
     }
-    return out;
-  })();
+  );
 
-  // 3) Resolve games for those IDs and reorder to match popularity order
-  const gameQuery = useQuery({
-    queryKey: ['game_data', orderedUniqueIds],
-    enabled: popularQuery.isFetched && orderedUniqueIds.length > 0,
-    queryFn: async () => {
-      const { data } = await axios.post<GameCardModel[]>(
-        '/api/igdb/games',
-        `fields *; where id=(${orderedUniqueIds.join(",")}); limit ${orderedUniqueIds.length};`,
-        {
-          headers: {
-            'Client-ID': clientId,
-            Authorization: 'Bearer ' + apiKey,
-          },
-        }
-      );
-      // Reorder to match popularity order
-      const byId = new Map<number, GameCardModel>(
-        (data ?? []).map((g) => [Number(g.id), g])
-      );
-      return orderedUniqueIds
-        .map((id) => byId.get(id))
-        .filter(Boolean) as GameCardModel[];
-    },
-    staleTime: 60_000,
-  });
-
-  // 4) Covers for exactly these games (hook should use a unique cache key per id set)
-  const coverIds: number[] = gameQuery.isFetched
-    ? gameQuery.data!.map((g) => Number(g.id))
-    : [];
-  const coverQuery = useCoversQuery(gameQuery.isFetched, coverIds);
-
-  // ---- Loading / error states ----
-  if (popularQuery.isLoading) return <div></div>;
-  if (popularQuery.isError) return <div>Error retrieving data</div>;
-
-  if (popularQuery.isFetched) {
-    if (gameQuery.isLoading) return <LoadingSpinner />;
-    if (gameQuery.isError) return <div>Failed to load games</div>;
-
-    if (coverQuery.isLoading) return <LoadingSpinner />;
-    if (coverQuery.isError) return <div>Error Loading Cover</div>;
+  const seen = new Set<number>();
+  const uniqueGameIds: number[] = [];
+  for (const p of popularData) {
+    const id = Number(p.game_id);
+    if (Number.isFinite(id) && !seen.has(id)) {
+      seen.add(id);
+      uniqueGameIds.push(id);
+      if (uniqueGameIds.length >= GAMES_PER_PAGE) break;
+    }
   }
 
-  // ---- Render ----
-  return (
-    <div className="mx-4 sm:mx-8 md:mx-12 mb-4">
-      <p className="text-white text-2xl md:text-3xl">Recently Popular</p>
+  if (uniqueGameIds.length === 0) {
+    return { data: [], nextCursor: undefined };
+  }
 
-      <div className="flex flex-col">
-        <DraggableScroll>
-          {gameQuery.data?.map((value: GameCardModel, index: number) => {
-            // attach cover if present
-            value.cover = coverQuery.data?.find(
-              (c: CoverArt) => c.game === Number(value.id)
-            );
-            return (
-              <div key={index} className="flex-shrink-0">
-                <GameCard game={value} />
+  const gameIdsString = uniqueGameIds.join(',');
+
+  const [gamesResponse, coversResponse] = await Promise.all([
+    axios.post<GameCardModel[]>(
+      '/api/igdb/games',
+      `fields *; where id=(${gameIdsString}); limit ${uniqueGameIds.length};`,
+      { headers: { 'Client-ID': clientId, Authorization: 'Bearer ' + apiKey } }
+    ),
+    axios.post<CoverArt[]>(
+      '/api/igdb/covers',
+      `fields *; where game=(${gameIdsString}); limit ${uniqueGameIds.length};`,
+      { headers: { 'Client-ID': clientId, Authorization: 'Bearer ' + apiKey } }
+    ),
+  ]);
+
+  const gamesById = new Map<number, GameCardModel>(
+    gamesResponse.data.map((g) => [Number(g.id), g])
+  );
+  const coversByGameId = new Map<number, CoverArt>(
+    (coversResponse.data || []).map((c) => [Number(c.game), c])
+  );
+
+  const combinedData = uniqueGameIds
+    .map((id) => {
+      const game = gamesById.get(id);
+      if (!game) return null;
+      return { ...game, cover: coversByGameId.get(id) };
+    })
+    .filter(Boolean) as GameWithCover[];
+
+  return {
+    data: combinedData,
+    nextCursor: pageParam + POPULARITY_FETCH_LIMIT,
+  };
+};
+
+function Popular() {
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    status,
+  } = useInfiniteQuery({
+    queryKey: ['popular_games_infinite_vertical'],
+    queryFn: fetchPopularGames,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    staleTime: 60_000,
+  });
+
+  const { ref, inView } = useInView({
+    rootMargin: '400px',
+  });
+
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetching) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetching, fetchNextPage]);
+
+  const games = data?.pages.flatMap((page) => page.data) ?? [];
+
+  const uniqueGames = Array.from(new Map(games.map(game => [game.id, game])).values());
+
+  return (
+    <div className="bg-transparent rounded-lg mx-auto max-w-7xl mb-8 px-4 sm:px-6 md:px-8 py-4">
+      <h2 className="text-white text-2xl md:text-3xl font-bold mb-6 pb-3 border-b border-gray-700">
+        Recently Popular
+      </h2>
+
+      {status === 'error' && (
+        <div className="text-red-400 bg-red-900/50 p-4 rounded-md text-center">
+          <strong>Error:</strong> {(error as Error)?.message || 'Unknown error'}. Please try refreshing.
+        </div>
+      )}
+
+      {
+        status === 'pending' && (
+          <div className="flex justify-center items-center h-48">
+            <LoadingSpinner />
+          </div>
+        )
+      }
+
+      {status === 'success' && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-15 gap-y-10">
+            {uniqueGames.map((game) => (
+              <div key={game.id} className="flex flex-col items-center px-3 sm:px-4">
+                <GameCard game={game} />
+                <p
+                  title={game.name || 'Unknown Game'}
+                  className="text-gray-200 font-medium text-sm text-center mt-3 w-full truncate"
+                >
+                  {game.name || 'Unknown Game'}
+                </p>
               </div>
-            );
-          })}
-        </DraggableScroll>
-      </div>
+            ))}
+          </div>
+
+          <div ref={ref} className="h-1" />
+
+          <div className="text-center pt-10">
+            {isFetchingNextPage && <LoadingSpinner />}
+            {!hasNextPage && uniqueGames.length > 0 && (
+              <p className="text-gray-500 text-lg">You've reached the end! 🚀</p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
