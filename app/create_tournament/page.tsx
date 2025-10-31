@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
+import { v4 as uuidv4 } from 'uuid'
 import { Tournament } from "@/app/models/tournament_model"
 
 export default function CreateTournamentPage() {
@@ -8,21 +9,17 @@ export default function CreateTournamentPage() {
 
   const [name, setName] = useState("")
   const [cover, setCover] = useState("") // URL
-  const [gameType, setGameType] = useState<string>("") // NEW field
+  const [gameCategory, setGameCategory] = useState<string>("CAT_BR") // dropdown
   const [teamSize, setTeamSize] = useState<number>(1)
   const [totalSlots, setTotalSlots] = useState<number>(8)
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
-  // const [registeredIds, setRegisteredIds] = useState<string>("") // comma separated
-  // const [winnerId, setWinnerId] = useState<string>("")
-  // const [runnerupId, setRunnerupId] = useState<string>("")
   const [tournamentDivision, setTournamentDivision] = useState<number>(1)
   const [poolPrice, setPoolPrice] = useState<number>(0)
   const [entryFee, setEntryFee] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // ...existing code for validate and onSubmit...
   function validate(): boolean {
     if (!name.trim()) {
       setError("Game name is required.")
@@ -55,46 +52,50 @@ export default function CreateTournamentPage() {
     if (!validate()) return
     setSaving(true)
 
-    const tournament: Tournament = {
-      tournament_id: `t_${Date.now()}`,
+    const nowIso = new Date().toISOString()
+    const id = uuidv4() // Type-safe UUID generation
+
+    const payload: Omit<Partial<Tournament>, 'created_at' | 'updated_at' | 'tournament_date'> & { tournament_id: string; created_at: string; updated_at: string; tournament_date?: string } = {
+      tournament_id: id,
       name: name.trim(),
+      game_category: gameCategory,
       start_date: new Date(startDate),
       end_date: new Date(endDate),
-      cover: cover.trim(),
-      game_category: gameType.trim(), // NEW
+      tournament_date: new Date(startDate).toISOString(),
+      cover: cover.trim() || undefined,
       team_size: Number(teamSize),
       total_slots: Number(totalSlots),
       registered_slots: 0,
-      //================================= THESE VALUES HAVE TO BE CHANGED ==============================
-      // registerd_id: registeredIds.split(",").map((s) => s.trim()).filter(Boolean),
-      // winner_id: winnerId.trim(),
-      // runnerup_id: runnerupId.trim(),
-      registered_id:["a","b"],
-      winner_id:"a",
-      runnerup_id:"b",
-      //=================================================================================================
+      registered_id: undefined,
+      winner_id: undefined,
+      runnerup_id: undefined,
       tournament_division: Number(tournamentDivision),
       pool_price: Number(poolPrice),
       entry_fee: Number(entryFee),
-      status:'upcoming'
+      created_at: nowIso,
+      updated_at: nowIso,
+      status: "upcoming",
     }
 
     try {
-      // Implement Backend logic to create new tournament
+      // send JSON to API (replace endpoint with your server handler)
+      await fetch("/api/tournaments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch(() => {
+        // ignore network errors here — we still persist locally below
+      })
+
+      // also persist locally for dev/testing
       const key = "tournaments_local_additions"
       const existing = JSON.parse(sessionStorage.getItem(key) ?? "[]")
-      existing.push({
-        ...tournament,
-        
-        start_date: tournament.start_date.toISOString(),
-        end_date: tournament.end_date.toISOString(),
-      })
+      existing.push(payload)
       sessionStorage.setItem(key, JSON.stringify(existing))
 
-      // optional: navigate back to tournaments listing
       router.push("/tournaments")
     } catch (err) {
-      setError(`Failed to save tournament locally : ${err}`)
+      setError(`Failed to save tournament: ${(err as Error).message ?? err}`)
       setSaving(false)
       return
     }
@@ -118,6 +119,7 @@ export default function CreateTournamentPage() {
               onChange={(e) => setName(e.target.value)}
               className="w-full mt-1 px-3 py-2 rounded bg-neutral-800 text-white"
               placeholder="Enter game / tournament name"
+              required
             />
           </div>
 
@@ -132,13 +134,16 @@ export default function CreateTournamentPage() {
           </div>
 
           <div>
-            <label className="text-sm text-neutral-300">Game type</label>
-            <input
-              value={gameType}
-              onChange={(e) => setGameType(e.target.value)}
+            <label className="text-sm text-neutral-300">Game category</label>
+            <select
+              value={gameCategory}
+              onChange={(e) => setGameCategory(e.target.value)}
               className="w-full mt-1 px-3 py-2 rounded bg-neutral-800 text-white"
-              placeholder="e.g. FPS, MOBA, Sports"
-            />
+            >
+              <option value="CAT_BR">CAT_BR</option>
+              <option value="CAT_FPS">CAT_FPS</option>
+              <option value="CAT_SPORTS">CAT_SPORTS</option>
+            </select>
           </div>
 
           <div>
@@ -170,6 +175,7 @@ export default function CreateTournamentPage() {
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               className="w-full mt-1 px-3 py-2 rounded bg-neutral-800 text-white"
+              required
             />
           </div>
 
@@ -180,6 +186,7 @@ export default function CreateTournamentPage() {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               className="w-full mt-1 px-3 py-2 rounded bg-neutral-800 text-white"
+              required
             />
           </div>
 
@@ -241,4 +248,3 @@ export default function CreateTournamentPage() {
     </div>
   )
 }
-//

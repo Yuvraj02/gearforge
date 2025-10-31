@@ -50,7 +50,6 @@ function HomePage() {
     <main className="flex min-h-screen w-full">
       <div className="flex flex-col w-full min-h-screen">
         <Carousel />
-        <HighestRated />
         <Popular />
       </div>
     </main>
