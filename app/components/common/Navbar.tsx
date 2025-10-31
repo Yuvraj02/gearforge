@@ -7,112 +7,174 @@ import { MdMenu } from "react-icons/md";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { togglePanel } from "./side_panel/sidePanelSlice";
 import Image from "next/image";
-// import logo from "../../../public/gearforge.svg"
+import UserMenu from "./UserMenu";
+import LoadingSpinner from "./LoadingSpinner";
+import React from "react";
 
 function NavBar() {
   const pathName: string = usePathname();
   const dispatch = useAppDispatch();
-  const isLoggedIn = useAppSelector((state)=>state.users.isLoggedIn)
-  const username = useAppSelector((state)=>state.users.user.user_name)
-  const navLink = [
+
+  const isLoggedIn = useAppSelector((s) => s.users.isLoggedIn);
+  const hasHydrated = useAppSelector((s) => s.users.hasHydrated);
+  const user = useAppSelector((s) => s.users.user);
+
+  const username = user?.user_name ?? "";
+  const division = user?.division ?? 3;
+  const divisionPoints = user ?.division_score ?? 0;
+
+  const displayName =
+    username || user?.name || (user?.email ? user.email.split("@")[0] : "Profile");
+
+  const navLinks = [
     { name: "Home", href: "/" },
     { name: "Tournaments", href: "/tournaments" },
-    { name: !isLoggedIn ? "Sign In" : username, href: !isLoggedIn? "/auth" : "/user_profile"}
   ];
+
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <header
-      className={`
-        fixed z-50 w-full bg-[#242528] border-b border-black shadow-md shadow-black/50
-        grid items-center gap-3 px-3 py-3.5
-        /* one row across all sizes: menu | search | links */
-        grid-cols-[auto_minmax(0,1fr)_auto]
-        md:px-4
-      `}
+      className="fixed top-0 left-0 z-50 w-full bg-[#242528] border-b border-black shadow-md shadow-black/50"
+      style={{ isolation: "isolate" }}
     >
-      {/* Left: Logo (desktop) / Menu (mobile) */}
-      <div className="flex items-center gap-3">
-        <div className="hidden md:block">
-          <Image
-            src="/gearforge.svg"
-            alt="GearForge Logo"
-            className="h-8 w-auto"
-            height={80}
-            width={80}
-            draggable={false}
-          // priority="true"
-          />
+      <div
+        className="
+          flex items-center justify-between gap-3 px-3 py-3.5
+          md:grid md:grid-cols-[auto_minmax(0,1fr)_auto]
+          md:px-4
+        "
+      >
+        {/* Left */}
+        <div className="flex items-center gap-3">
+          <div className="hidden md:block">
+            <Image
+              src="/gearforge.svg"
+              alt="GearForge Logo"
+              className="h-8 w-auto"
+              height={80}
+              width={80}
+              draggable={false}
+            />
+          </div>
+          <button
+            className="inline-flex items-center md:hidden"
+            aria-label="Open menu"
+            onClick={() => dispatch(togglePanel())}
+          >
+            <MdMenu className="text-2xl" />
+          </button>
         </div>
 
-        <button
-          className="inline-flex items-center md:hidden"
-          aria-label="Open menu"
-          onClick={() => dispatch(togglePanel())}
-        >
-          <MdMenu className="text-2xl" />
-        </button>
-      </div>
-
-      {/* Center: Search (width capped on mobile so links fit on the right) */}
-      <div className="w-full flex justify-center">
-        <SearchBar
-        key={pathName}
-          className={`
-            bg-[#161719] px-2 py-1 gap-2 items-center flex rounded-xl
-            w-full
-            /* cap width on small screens to keep links in same row */
-            max-w-[55vw]   /* phones */
-            sm:max-w-[60vw]
-            md:w-[25vw]
-            lg:w-[25vw]
-          `}
-          type="text"
-          name="game_search_field"
-          placeholder="Search Game"
-        />
-      </div>
-
-      {/* Right: Nav links (no wrap; scroll horizontally if super tight) */}
-      <nav
-        className={`
-          flex gap-4 h-full items-center
-          whitespace-nowrap
-          overflow-x-auto
-          no-scrollbar
-        `}
-      >
-        {navLink.map((link) => {
-          const isActive = pathName === link.href;
-          return (
-            <Link
-              key={link.name}
-              href={link.href}
-              className={`
-                relative flex items-center px-2 py-1
-                hover:text-white
-                ${isActive ? "text-blue-400" : ""}
-                text-sm md:text-[1rem]
-                group
-              `}
+        {/* Center (Desktop only) */}
+        {!isMobile && (
+          <div className="w-full flex justify-center">
+            <div
+              className="
+                w-full flex justify-center
+                transition-[width] duration-300 ease-in-out
+                md:w-[60rem] lg:w-[75rem] xl:w-[90rem] 2xl:w-[110rem]
+                focus-within:md:w-[68rem] focus-within:lg:w-[88rem]
+                focus-within:xl:w-[104rem] focus-within:2xl:w-[120rem]
+              "
             >
-              {link.name}
+              <SearchBar
+                key={pathName}
+                className="
+                  bg-[#161719] px-5 py-2 gap-2 items-center flex rounded-xl
+                  w-full transition-shadow duration-200 ease-in-out
+                  focus-within:shadow-[0_0_0_2px_rgba(59,130,246,0.35)]
+                "
+                type="text"
+                name="game_search_field"
+                placeholder="Search Game"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Right */}
+        <nav className="flex gap-4 h-full items-center whitespace-nowrap overflow-x-auto no-scrollbar">
+          {navLinks.map((link) => {
+            const isActive = pathName === link.href;
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                className={`relative flex items-center px-2 py-1 hover:text-white ${
+                  isActive ? "text-blue-400" : ""
+                } text-sm md:text-[1rem] group`}
+              >
+                {link.name}
+                <span
+                  className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${
+                    isActive ? "w-full" : "w-0 group-hover:w-full"
+                  }`}
+                />
+              </Link>
+            );
+          })}
+
+          {/* Auth UI */}
+          {!hasHydrated ? (
+            <div
+              className="relative flex items-center justify-center"
+              style={{ minWidth: "7rem", height: "2rem" }}
+            >
+              <LoadingSpinner />
+            </div>
+          ) : !isLoggedIn ? (
+            <Link
+              href="/auth"
+              className={`relative flex items-center px-2 py-1 hover:text-white ${
+                pathName === "/auth" ? "text-blue-400" : ""
+              } text-sm md:text-[1rem] group`}
+            >
+              Sign In
               <span
-                className={`
-                  absolute bottom-0 left-0 h-[2px] bg-blue-400
-                  transition-all duration-300 ease-out origin-left
-                  ${isActive ? "w-full" : "w-0 group-hover:w-full"}
-                `}
+                className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${
+                  pathName === "/auth" ? "w-full" : "w-0 group-hover:w-full"
+                }`}
               />
             </Link>
-          );
-        })}
-      </nav>
+          ) : (
+            <div
+              className="relative flex items-center justify-center"
+              style={{ minWidth: "7rem", height: "2rem" }}
+            >
+              <UserMenu
+                username={displayName}
+                division={division}
+                divisionPoints={divisionPoints}
+              />
+            </div>
+          )}
+        </nav>
+      </div>
+
+      {/* Mobile Search below nav */}
+      {isMobile && (
+        <div className="px-3 pb-3">
+          <SearchBar
+            key={pathName}
+            className="
+              bg-[#161719] px-3 py-2 gap-2 items-center flex rounded-xl
+              w-full
+            "
+            type="text"
+            name="game_search_field"
+            placeholder="Search Game"
+          />
+        </div>
+      )}
     </header>
   );
 }
 
 export default NavBar;
-
-// /* Optional (globals.css): hide scrollbar for the tiny horizontal overflow on the links */
-// .no-scrollbar::-webkit-scrollbar { display: none; }
-// .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

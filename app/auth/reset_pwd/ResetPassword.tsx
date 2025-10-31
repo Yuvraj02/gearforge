@@ -1,6 +1,6 @@
 'use client'
 
-import { updateUserPassword, verifyResetLink } from "@/app/api"
+import { resetPassword, verifyResetLink } from "@/app/api"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -47,7 +47,7 @@ function ResetPassword() {
 
   const update_pwd = useMutation({
     mutationKey: ["pwd_update"],
-    mutationFn: async () => updateUserPassword(verification_q.data!.user_id, confirmPassword),
+    mutationFn: async () => resetPassword(verification_q.data!.user_id, confirmPassword),
     onError: (error: AxiosError) => {
       console.error(error)
     },
