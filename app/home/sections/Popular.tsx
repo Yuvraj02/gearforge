@@ -159,7 +159,7 @@ function Popular() {
           <div className="text-center pt-10">
             {isFetchingNextPage && <LoadingSpinner />}
             {!hasNextPage && uniqueGames.length > 0 && (
-              <p className="text-gray-500 text-lg">You've reached the end! 🚀</p>
+              <p className="text-gray-500 text-lg">{`You've reached the end! 🚀`}</p>
             )}
           </div>
         </>
