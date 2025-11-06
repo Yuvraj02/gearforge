@@ -4,6 +4,7 @@ import { User } from "./models/user_model";
 interface UserState {
   user: User;
   isLoggedIn: boolean;
+  hasHydrated: boolean; // if you don't use this, you can remove it
 }
 
 const user: User = {
@@ -12,6 +13,8 @@ const user: User = {
   user_name: "",
   email: "",
   division: 3,
+  role: "player",
+  division_score: 0, // or division_points if that's your canonical field
 };
 
 const emptyUser: User = {
@@ -25,24 +28,25 @@ const emptyUser: User = {
   won_tournaments: [],
   past_teams: [],
   discord_id: "",
+  role: "player",
+  division_score: 0,
 };
 
-interface UserDataPayload {
-  data: User;
-}
-
 const initUserState: UserState = {
-  user: user,
+  user,
   isLoggedIn: false,
+  hasHydrated: false, // set to true if you’re not using an auth bootstrap
 };
 
 export const userSlice = createSlice({
   name: "userSlice",
   initialState: initUserState,
   reducers: {
-    setUser: (state, action: PayloadAction<UserDataPayload>) => {
-      state.user = action.payload.data;
+    // ✅ accept a User directly and store it directly
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
       state.isLoggedIn = true;
+      state.hasHydrated = true;
     },
 
     setUserId: (state, action: PayloadAction<string>) => {
@@ -56,8 +60,14 @@ export const userSlice = createSlice({
     logoutUser: (state) => {
       state.isLoggedIn = false;
       state.user = emptyUser;
+      state.hasHydrated = true;
+    },
+
+    setHydrated: (state, action: PayloadAction<boolean>) => {
+      state.hasHydrated = action.payload;
     },
   },
 });
 
-export const { setUser, setUserId, loginUser, logoutUser } = userSlice.actions;
+export const { setUser, setUserId, loginUser, logoutUser, setHydrated } = userSlice.actions;
+export default userSlice.reducer;

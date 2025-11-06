@@ -1,5 +1,7 @@
 import axios from "axios";
 import { User } from "./models/user_model";
+import { Tournament } from "./models/tournament_model";
+import { FinishPayload } from "./tournaments/[tournamentId]/ParticipantBoard";
 /*
     Interfaces : LoginData & RegistrationData
         -> Both of them will be referenced in files /auth/page.tsx & /auth/register/page.tsx
@@ -24,7 +26,17 @@ export interface LoginResponseData {
   data: User;
 }
 
-const API_BASE_URL = "https://gearforge-backend-891464567393.europe-west1.run.app";
+export interface UserTournament {
+  userId: string;
+  type: string;
+}
+
+let API_BASE_URL: string = process.env.NEXT_PUBLIC_BASE_API_LOCAL!;
+if (process.env.NEXT_NODE_ENV === "prod") {
+  API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_PROD!;
+} else if (process.env.NEXT_NODE_ENV === "dev") {
+  API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_DEV!;
+}
 
 export async function login(data: LoginData): Promise<LoginResponseData> {
   const response = await axios.post(`${API_BASE_URL}/login`, data, {
@@ -86,7 +98,7 @@ export async function verifyResetLink(token: string) {
   return response.data;
 }
 
-export async function updateUserPassword(user_id: string, password: string) {
+export async function resetPassword(user_id: string, password: string) {
   const response = await axios.patch(
     `${API_BASE_URL}/update_pwd`,
     { user_id: user_id, password: password },
@@ -109,18 +121,23 @@ export async function requestPasswordReset(email: string) {
   return response.data;
 }
 
-export async function updateUser(userId: string, username?: string | null, name?: string | null) {
+export async function updateUser(
+  userId: string,
+  username?: string | null,
+  name?: string | null
+) {
   // Build the payload shape:
-  
+
   // {
   //   "data": { "user_id": "...", "user_name": "...", "name": "..." }
   // }
-  
+
   const data: { user_id: string; user_name?: string; name?: string } = {
     user_id: userId,
   };
 
-  const hasUsername = typeof username === "string" && username.trim().length > 0;
+  const hasUsername =
+    typeof username === "string" && username.trim().length > 0;
   const hasName = typeof name === "string" && name.trim().length > 0;
 
   if (hasUsername) data.user_name = username!.trim();
@@ -138,4 +155,76 @@ export async function updateUser(userId: string, username?: string | null, name?
   );
 
   return res.data;
+}
+
+export async function updateUserPassword(
+  user_id: string,
+  current_pwd: string,
+  new_pwd: string
+) {
+  const res = await axios.patch(
+    `${API_BASE_URL}/update_user_pwd`,
+    {
+      user_id: user_id,
+      current_pwd: current_pwd,
+      new_pwd: new_pwd,
+    },
+    { withCredentials: true }
+  );
+
+  return res.data;
+}
+
+// api.ts
+export async function getUserTournaments(ids: string[]) {
+  const res = await axios.post(
+    `${API_BASE_URL}/get_user_tournaments`,
+    { tournament_ids: ids },
+    { withCredentials: true }
+  );
+
+  const data = res.data;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.tournaments)) return data.tournaments;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+}
+
+export async function createTournament(payload: Tournament) {
+  const res = await axios.post(`${API_BASE_URL}/create_tournament`, payload, {
+    withCredentials: true,
+  });
+  return res.data;
+}
+
+export async function getTournaments() {
+  const res = await axios.get(`${API_BASE_URL}/tournaments`);
+  return res.data;
+}
+
+export async function getUserByEmail(email: string) {
+  const res = await axios.post(`${API_BASE_URL}/user_by_email`, {email:email}, {withCredentials:true});
+  return res.data;
+}
+
+export async function finishTournament(payload:FinishPayload){
+  const res = await axios.post(`${API_BASE_URL}/finish_tournament`, payload, {withCredentials:true})
+  return res.data
+}
+
+export async function getParticipants(tournament_id:string){
+  const res = await axios.post(`${API_BASE_URL}/participants`, {tournament_id:tournament_id}, {withCredentials:true})
+  return res.data.data
+}
+
+export async function getLeaderboard(tournament_id:string, game_category:string){
+  const res = await axios.post(`${API_BASE_URL}/leaderboard`, {tournament_id:tournament_id, game_category:game_category}, {withCredentials:true})
+  return res.data
+}
+
+export async function getTournamentById(tournament_id:string) : Promise<Tournament>{
+
+  const res = await axios.post(`${API_BASE_URL}/get_tournament`, {tournament_id:tournament_id}, {withCredentials:true})
+  return res.data
 }

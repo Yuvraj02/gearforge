@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import GenreList from './GenreList';
+// import GenreList from './GenreList';
 import { MdOutlineSportsMartialArts } from 'react-icons/md';
 import { MdHome } from "react-icons/md";
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import React, { useEffect } from 'react';
 import { togglePanel } from './sidePanelSlice';
 import { usePathname } from 'next/navigation';
-
+// import { MdSportsEsports } from "react-icons/md";
 
 export default function SidePanel() {
   const dispatch = useAppDispatch();
@@ -61,7 +61,7 @@ export default function SidePanel() {
         `}
       >
         {/* Mobile-only logo/header row */}
-        <div className="sticky top-0 z-10 bg-[#242528] border-b border-white/10 px-4 py-3 md:hidden">
+        <div className="sticky top-0 z-10 bg-[#242528] border-b border-white/10 px-4 py-3 md:hidden mt-14">
           <Link
             href="/"
             className="flex items-center gap-2 select-none"
@@ -95,8 +95,14 @@ export default function SidePanel() {
             </div>
           </Link>
 
-          <GenreList />
-
+          {/* <GenreList /> */}
+          {/* <Link href="/browse_games" onClick={closeOnMobile}>
+            <div className={panelItem}>
+              <MdSportsEsports />
+              <div>Browse Games</div>
+            </div>
+          </Link> */}
+          
         </div>
       </aside>
     </>

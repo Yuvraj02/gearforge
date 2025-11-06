@@ -5,7 +5,8 @@ export interface Tournament {
   start_date: Date;
   end_date: Date;
   cover?: string;
-  team_size?: number;
+  max_team_size?: number;
+  min_team_size?:number;
   total_slots?: number;
   registered_slots?: number;
   registered_id?: string[];
@@ -16,6 +17,8 @@ export interface Tournament {
   entry_fee?: number;
   created_at?: Date;
   updated_at?: Date;
+  coming_soon:boolean
+  registration_status?:'open' | 'close'
   status: 'upcoming' | 'live' | 'ended';
   tournament_date?: Date;
 }

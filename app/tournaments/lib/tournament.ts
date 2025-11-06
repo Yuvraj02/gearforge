@@ -12,7 +12,9 @@ type RawTournament = {
   start_date?: unknown;
   end_date?: unknown;
   cover?: unknown;
-  team_size?: unknown;
+  // team_size?: unknown;
+  max_team_size:unknown
+  min_team_size:unknown
   total_slots?: unknown;
   registered_slots?: unknown;
   registerd_id?: unknown; // keeping the original key
@@ -49,7 +51,9 @@ export function parseRaw(raw: unknown): Tournament {
     start_date: start,
     end_date: end,
     cover: toString(r.cover),
-    team_size: toNumber(r.team_size, 1),
+    // team_size: toNumber(r.team_size, 1),
+    max_team_size:toNumber(r.max_team_size),
+    min_team_size:toNumber(r.min_team_size),
     total_slots: toNumber(r.total_slots),
     registered_slots: toNumber(r.registered_slots),
     registered_id: Array.isArray(r.registerd_id) ? r.registerd_id.map(String) : [],
