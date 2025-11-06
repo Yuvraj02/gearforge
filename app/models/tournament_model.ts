@@ -17,6 +17,8 @@ export interface Tournament {
   entry_fee?: number;
   created_at?: Date;
   updated_at?: Date;
+  coming_soon:boolean
+  registration_status?:'open' | 'close'
   status: 'upcoming' | 'live' | 'ended';
   tournament_date?: Date;
 }

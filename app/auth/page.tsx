@@ -5,11 +5,21 @@ import Image from "next/image"
 import Link from "next/link"
 import React, { ChangeEvent, useEffect, useState } from "react"
 import { login } from "../api"
-import { loginUser } from "../userSlice"
+import { loginUser, setUser } from "../userSlice"
 import { useRouter } from "next/navigation"
 import axios, { AxiosError } from "axios"
 import { useAppDispatch, useAppSelector } from "../hooks"
 import { signIn, useSession } from "next-auth/react"
+
+/*
+    NOTE: 
+
+    This file is divided into two auth sections 
+    1. First is Traditional Authentication (Email & Password)
+    2. Second is OAuth (Google)
+    So if any changes related to user data have to be made, make the changes in both the parts
+
+*/
 
 function AuthenticationPage() {
 
@@ -33,11 +43,13 @@ function AuthenticationPage() {
     const login_user = useMutation({
         mutationKey: ['login_user'],
         mutationFn: async () => login({ email: email, password: password }),
-        onSuccess: () => {
+        onSuccess: (data) => {
             setIsValidEmail(true)
             setIsValidPassword(true)
             dispatch(loginUser())
             setSysLogin(true)
+            console.log(data.data)
+            dispatch(setUser(data.data))
             router.push("/")
             console.log("User Logged in Successfully")
         },
@@ -67,7 +79,13 @@ function AuthenticationPage() {
 
         if (status === "authenticated" && session.user && !isLoggedIn) {
             (async () => {
-                const response = await axios.post('https://gearforge-backend-891464567393.europe-west1.run.app/auth/oauth/upsert', {
+                let url : string = process.env.NEXT_PUBLIC_BASE_API_LOCAL!
+                if(process.env.NEXT_NODE_ENV === "prod"){
+                    url = process.env.NEXT_PUBLIC_BASE_API_PROD!
+                }else if(process.env.NEXT_NODE_ENV === "dev"){
+                    url = process.env.NEXT_PUBLIC_BASE_API_DEV!
+                }
+                const response = await axios.post(`${url}/auth/oauth/upsert`, {
                     input: {
                         provider: session.user?.provider,
                         providerAccountId: session.user?.providerAccountId,

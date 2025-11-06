@@ -83,7 +83,7 @@ export default function UserMenu({ username, division, divisionPoints }: Props) 
         predicate: (q) => String(q.queryKey[0]).startsWith("user_"),
       });
       await signOut({ redirect: false });
-      router.replace("/");
+      router.replace("/auth");
       router.refresh();
     },
   });

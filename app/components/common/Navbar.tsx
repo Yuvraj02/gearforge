@@ -8,7 +8,6 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { togglePanel } from "./side_panel/sidePanelSlice";
 import Image from "next/image";
 import UserMenu from "./UserMenu";
-import LoadingSpinner from "./LoadingSpinner";
 import React from "react";
 
 function NavBar() {
@@ -21,7 +20,7 @@ function NavBar() {
 
   const username = user?.user_name ?? "";
   const division = user?.division ?? 3;
-  const divisionPoints = user ?.division_score ?? 0;
+  const divisionPoints = user?.division_score ?? 0;
 
   const displayName =
     username || user?.name || (user?.email ? user.email.split("@")[0] : "Profile");
@@ -41,9 +40,11 @@ function NavBar() {
 
   return (
     <header
+      data-nav
       className="fixed top-0 left-0 z-50 w-full bg-[#242528] border-b border-black shadow-md shadow-black/50"
       style={{ isolation: "isolate" }}
     >
+
       <div
         className="
           flex items-center justify-between gap-3 px-3 py-3.5
@@ -84,7 +85,7 @@ function NavBar() {
                 focus-within:xl:w-[104rem] focus-within:2xl:w-[120rem]
               "
             >
-              <SearchBar
+              {/* <SearchBar
                 key={pathName}
                 className="
                   bg-[#161719] px-5 py-2 gap-2 items-center flex rounded-xl
@@ -94,7 +95,7 @@ function NavBar() {
                 type="text"
                 name="game_search_field"
                 placeholder="Search Game"
-              />
+              /> */}
             </div>
           </div>
         )}
@@ -107,15 +108,13 @@ function NavBar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`relative flex items-center px-2 py-1 hover:text-white ${
-                  isActive ? "text-blue-400" : ""
-                } text-sm md:text-[1rem] group`}
+                className={`relative flex items-center px-2 py-1 hover:text-white ${isActive ? "text-blue-400" : ""
+                  } text-sm md:text-[1rem] group`}
               >
                 {link.name}
                 <span
-                  className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${
-                    isActive ? "w-full" : "w-0 group-hover:w-full"
-                  }`}
+                  className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${isActive ? "w-full" : "w-0 group-hover:w-full"
+                    }`}
                 />
               </Link>
             );
@@ -124,23 +123,24 @@ function NavBar() {
           {/* Auth UI */}
           {!hasHydrated ? (
             <div
-              className="relative flex items-center justify-center"
+              className="relative flex items-center justify-center overflow-hidden"
               style={{ minWidth: "7rem", height: "2rem" }}
             >
-              <LoadingSpinner />
+              <span
+                className="inline-block h-4 w-4 rounded-full border border-neutral-600 border-t-neutral-100 animate-spin"
+                aria-label="Loading"
+              />
             </div>
           ) : !isLoggedIn ? (
             <Link
               href="/auth"
-              className={`relative flex items-center px-2 py-1 hover:text-white ${
-                pathName === "/auth" ? "text-blue-400" : ""
-              } text-sm md:text-[1rem] group`}
+              className={`relative flex items-center px-2 py-1 hover:text-white ${pathName === "/auth" ? "text-blue-400" : ""
+                } text-sm md:text-[1rem] group`}
             >
               Sign In
               <span
-                className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${
-                  pathName === "/auth" ? "w-full" : "w-0 group-hover:w-full"
-                }`}
+                className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${pathName === "/auth" ? "w-full" : "w-0 group-hover:w-full"
+                  }`}
               />
             </Link>
           ) : (
