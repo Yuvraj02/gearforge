@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import SearchBar from "./SearchBar";
+// import SearchBar from "./SearchBar";
 import Link from "next/link";
 import { MdMenu } from "react-icons/md";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
@@ -159,7 +159,7 @@ function NavBar() {
       </div>
 
       {/* Mobile Search below nav */}
-      {isMobile && (
+      {/* {isMobile && (
         <div className="px-3 pb-3">
           <SearchBar
             key={pathName}
@@ -172,7 +172,7 @@ function NavBar() {
             placeholder="Search Game"
           />
         </div>
-      )}
+      )} */}
     </header>
   );
 }

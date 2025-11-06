@@ -228,3 +228,8 @@ export async function getTournamentById(tournament_id:string) : Promise<Tourname
   const res = await axios.post(`${API_BASE_URL}/get_tournament`, {tournament_id:tournament_id}, {withCredentials:true})
   return res.data
 }
+
+export async function updateTournamentStatus(registration_status?:'open'|'close', coming_soon?:boolean, tournament_id?:string){
+  const res = await axios.patch(`${API_BASE_URL}/update_tournament_status`, {tournament_id:tournament_id,registration_status:registration_status, coming_soon:coming_soon}, {withCredentials:true})
+  return res
+}
