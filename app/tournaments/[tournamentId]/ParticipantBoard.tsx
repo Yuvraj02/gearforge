@@ -1,7 +1,7 @@
 // app/tournaments/[tournamentId]/ParticipantBoard.tsx
-"use client";
+'use client';
 
-import React from "react";
+import React from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -14,10 +14,10 @@ import {
   closestCorners,
   MouseSensor,
   TouchSensor,
-} from "@dnd-kit/core";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getParticipants, finishTournament as finishTournamentApi } from "@/app/api";
-import type { Team } from "@/app/models/team_model";
+} from '@dnd-kit/core';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getParticipants, finishTournament as finishTournamentApi } from '@/app/api';
+import type { Team } from '@/app/models/team_model';
 
 const SLOT_COUNT = 25;
 
@@ -38,15 +38,14 @@ type RawTeam = Partial<Team> & {
 function normalizeTeams(raw: RawTeam[]): Team[] {
   const mapped = (raw ?? [])
     .map((r, idx) => ({
-      teamId: (r.teamId ?? r.team_id ?? "").trim() || `__temp_${idx}`,
+      teamId: (r.teamId ?? r.team_id ?? '').trim() || `__temp_${idx}`,
       players: Array.isArray(r.players) ? (r.players as string[]) : [],
       team_name: (r.team_name ?? r.teamName ?? r.name ?? `Team ${idx + 1}`).toString(),
-      position_in_tournament: r.position_in_tournament ?? "",
-      tournament_id: r.tournament_id ?? "",
+      position_in_tournament: r.position_in_tournament ?? '',
+      tournament_id: r.tournament_id ?? '',
     }))
     .filter((t) => !!t.teamId);
 
-  // dedupe by id
   return Array.from(new Map(mapped.map((t) => [t.teamId, t])).values());
 }
 
@@ -68,8 +67,8 @@ function buildFinishPayload(
 
 export default function ParticipantsBoard({
   tournamentId,
-  canEdit,        // false => player
-  locked = false, // true => ended
+  canEdit,
+  locked = false,
   onFinished,
 }: {
   tournamentId: string;
@@ -79,49 +78,54 @@ export default function ParticipantsBoard({
 }) {
   const queryClient = useQueryClient();
 
-  // ---------- Flags (no early return) ----------
-  const forceReadOnlyGrid = !canEdit || locked; // player OR ended
+  const forceReadOnlyGrid = !canEdit || locked;
   const editable = canEdit && !locked;
 
-  // ---------- Sensors (always created to keep hook order stable) ----------
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 2 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 5 } });
   const sensors = useSensors(mouseSensor, touchSensor);
 
-  // ---------- Data fetch (always) ----------
-  const {
-    data: participantsDataRaw = [],
-    isLoading: participantsLoading,
-    isError: participantsError,
-  } = useQuery({
-    queryKey: ["participants", tournamentId],
+  // DO NOT default to [] here — let it be undefined until data arrives
+  const q = useQuery({
+    queryKey: ['participants', tournamentId],
     queryFn: async (): Promise<RawTeam[]> => getParticipants(tournamentId),
+    retry: 1,
   });
+  const participantsDataRaw = q.data; // may be undefined
+  const participantsLoading = q.isLoading;
+  const participantsError = q.isError;
 
-  // ---------- Local state (always) ----------
   const [pool, setPool] = React.useState<Team[]>([]);
   const [ranking, setRanking] = React.useState<Array<Team | null>>(Array(SLOT_COUNT).fill(null));
 
+  // Guarded, one-time init when real data appears or actually changes
+  const idsRef = React.useRef<string>('');
   React.useEffect(() => {
+    if (!participantsDataRaw || !Array.isArray(participantsDataRaw)) return;
+
     const normalized = normalizeTeams(participantsDataRaw);
+    const newIds = normalized.map((t) => t.teamId).join(',');
+
+    if (newIds === idsRef.current) return; // nothing changed
+    idsRef.current = newIds;
+
     setPool(normalized);
-    setRanking(Array(SLOT_COUNT).fill(null));
+    // reset ranking only if it already contained something
+    setRanking((prev) => (prev.some((t) => t !== null) ? Array(SLOT_COUNT).fill(null) : prev));
   }, [participantsDataRaw]);
 
-  // ---------- Mutation (always create hook; guard its use with `editable`) ----------
   const finishTournament = useMutation({
     mutationFn: async () => {
-      if (!editable) return; // no-op when not editable
-      const payload = buildFinishPayload(tournamentId, "CAT_BR", ranking);
+      if (!editable) return;
+      const payload = buildFinishPayload(tournamentId, 'CAT_BR', ranking);
       return await finishTournamentApi(payload);
     },
     onSuccess: async () => {
       onFinished();
-      await queryClient.invalidateQueries({ queryKey: ["leaderboardRaw", tournamentId] });
+      await queryClient.invalidateQueries({ queryKey: ['leaderboardRaw', tournamentId] });
     },
   });
 
-  // ---------- Context menu (always set up, guarded by `editable`) ----------
   type ContextMenuState = { open: boolean; x: number; y: number; teamId: string | null };
   const [menu, setMenu] = React.useState<ContextMenuState>({ open: false, x: 0, y: 0, teamId: null });
   const closeMenu = () => setMenu({ open: false, x: 0, y: 0, teamId: null });
@@ -133,16 +137,15 @@ export default function ParticipantsBoard({
   React.useEffect(() => {
     if (!menu.open) return;
     const onClick = () => closeMenu();
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && closeMenu();
-    window.addEventListener("click", onClick);
-    window.addEventListener("keydown", onEsc);
+    const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && closeMenu();
+    window.addEventListener('click', onClick);
+    window.addEventListener('keydown', onEsc);
     return () => {
-      window.removeEventListener("click", onClick);
-      window.removeEventListener("keydown", onEsc);
+      window.removeEventListener('click', onClick);
+      window.removeEventListener('keydown', onEsc);
     };
   }, [menu.open]);
 
-  // ---------- Move helpers (always defined; guarded inside) ----------
   const moveTeamToSlot = React.useCallback(
     (teamId: string, targetIndex: number) => {
       if (!editable) return;
@@ -191,14 +194,12 @@ export default function ParticipantsBoard({
     [editable]
   );
 
-  // ---------- Drag overlay (always) ----------
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const activeTeam = React.useMemo<Team | null>(() => {
     if (!activeId) return null;
     return pool.find((t) => t.teamId === activeId) ?? ranking.find((t) => t?.teamId === activeId) ?? null;
   }, [activeId, pool, ranking]);
 
-  // ---------- DnD handlers (always defined; guarded inside) ----------
   function handleDragStart(event: DragStartEvent) {
     if (!editable) return;
     setActiveId(String(event.active.id));
@@ -211,7 +212,7 @@ export default function ParticipantsBoard({
 
     if (!editable || !overId) return;
 
-    if (overId === "pool" || overId.startsWith("pool-") || overId === "pool-column") {
+    if (overId === 'pool' || overId.startsWith('pool-') || overId === 'pool-column') {
       setRanking((prev) => {
         const next = [...prev];
         const fromSlotIndex = next.findIndex((t) => t?.teamId === active);
@@ -225,14 +226,12 @@ export default function ParticipantsBoard({
       return;
     }
 
-    if (overId.startsWith("slot-")) {
-      const targetIndex = Number(overId.split("-")[1]);
+    if (overId.startsWith('slot-')) {
+      const targetIndex = Number(overId.split('-')[1]);
       moveTeamToSlot(active, targetIndex);
     }
   }
 
-  // ---------- Render ----------
-  // Player OR ended => only 5×5 participants grid. Admin (live/upcoming) => interactive board.
   const showReadOnlyGrid = forceReadOnlyGrid;
 
   return (
@@ -243,7 +242,6 @@ export default function ParticipantsBoard({
       onDragEnd={handleDragEnd}
     >
       {showReadOnlyGrid ? (
-        // PLAYER/ENDED VIEW: 5x5 grid only
         <div className="w-full flex items-start justify-center p-6">
           <Participants
             teams={pool}
@@ -252,11 +250,10 @@ export default function ParticipantsBoard({
             onCardContextMenu={() => {}}
             draggable={false}
             droppableToPool={false}
-            gridLikeRanking // show 5x5 grid
+            gridLikeRanking
           />
         </div>
       ) : (
-        // ADMIN VIEW: list + ranking
         <>
           <div className="w-full flex items-start justify-center gap-8 p-6">
             <Participants
@@ -264,8 +261,8 @@ export default function ParticipantsBoard({
               loading={participantsLoading}
               error={participantsError}
               onCardContextMenu={(teamId, e) => openMenu(teamId, e)}
-              draggable={true}
-              droppableToPool={true}
+              draggable
+              droppableToPool
               gridLikeRanking={false}
             />
             <RankingGrid
@@ -279,9 +276,9 @@ export default function ParticipantsBoard({
               onClick={() => finishTournament.mutate()}
               disabled={finishTournament.isPending || !editable}
               className="rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 disabled:opacity-60"
-              title={!editable ? "Editing disabled" : undefined}
+              title={!editable ? 'Editing disabled' : undefined}
             >
-              {finishTournament.isPending ? "Finishing..." : "Finish Tournament"}
+              {finishTournament.isPending ? 'Finishing...' : 'Finish Tournament'}
             </button>
             <button
               onClick={() => {
@@ -294,7 +291,7 @@ export default function ParticipantsBoard({
               }}
               disabled={!editable}
               className="rounded-md bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2 disabled:opacity-60"
-              title={!editable ? "Editing disabled" : undefined}
+              title={!editable ? 'Editing disabled' : undefined}
             >
               Reset Selections
             </button>
@@ -304,10 +301,9 @@ export default function ParticipantsBoard({
 
       <DragOverlay>{activeTeam ? <OverlayCard team={activeTeam} /> : null}</DragOverlay>
 
-      {/* Context menu (only meaningful when editable; markup can exist safely) */}
       {menu.open && menu.teamId && editable && (
         <div
-          style={{ position: "fixed", top: menu.y, left: menu.x, zIndex: 50 }}
+          style={{ position: 'fixed', top: menu.y, left: menu.x, zIndex: 50 }}
           className="bg-gray-900 border border-white/10 rounded-md shadow-lg p-2 max-h-[70vh] overflow-auto"
           onContextMenu={(e) => e.preventDefault()}
         >
@@ -344,7 +340,7 @@ export default function ParticipantsBoard({
   );
 }
 
-/* ================= Subcomponents ================= */
+/* ---------- Subcomponents ---------- */
 
 const Participants = React.memo(function Participants({
   teams,
@@ -353,7 +349,7 @@ const Participants = React.memo(function Participants({
   onCardContextMenu,
   draggable,
   droppableToPool,
-  gridLikeRanking = false, // player/ended => true (5×5). admin => false (list)
+  gridLikeRanking = false,
 }: {
   teams: Team[];
   loading: boolean;
@@ -363,7 +359,7 @@ const Participants = React.memo(function Participants({
   droppableToPool: boolean;
   gridLikeRanking?: boolean;
 }) {
-  const { setNodeRef: setColumnRef, isOver: isOverColumn } = useDroppable({ id: "pool-column" });
+  const { setNodeRef: setColumnRef, isOver: isOverColumn } = useDroppable({ id: 'pool-column' });
 
   return (
     <div
@@ -371,7 +367,7 @@ const Participants = React.memo(function Participants({
       className="flex flex-col gap-3 p-4 bg-white/5 rounded-lg"
     >
       <h3 className="text-white/90 font-medium">
-        {gridLikeRanking ? "Participants" : "Teams"}
+        {gridLikeRanking ? 'Participants' : 'Teams'}
       </h3>
 
       <PoolDropZone
@@ -386,14 +382,14 @@ const Participants = React.memo(function Participants({
         )}
 
         {!loading && !error && (
-          <div className={gridLikeRanking ? "grid grid-cols-5 gap-3" : "grid grid-cols-1 gap-2"}>
+          <div className={gridLikeRanking ? 'grid grid-cols-5 gap-3' : 'grid grid-cols-1 gap-2'}>
             {teams.map((team) => (
               <ParticipantCard
                 key={team.teamId}
                 team={team}
                 onContextMenu={(e) => onCardContextMenu(team.teamId, e)}
-                draggable={draggable && !gridLikeRanking}         // no drag in 5×5
-                droppableToPool={droppableToPool && !gridLikeRanking} // no drop targets in 5×5
+                draggable={draggable && !gridLikeRanking}
+                droppableToPool={droppableToPool && !gridLikeRanking}
                 gridLikeRanking={gridLikeRanking}
               />
             ))}
@@ -415,7 +411,7 @@ function PoolDropZone({
   isOverColumn: boolean;
   gridLike: boolean;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "pool" });
+  const { setNodeRef, isOver } = useDroppable({ id: 'pool' });
   const refProp = droppable ? { ref: setNodeRef } : {};
   const highlight = droppable && (isOver || isOverColumn);
 
@@ -423,11 +419,11 @@ function PoolDropZone({
     <div
       {...refProp}
       className={`rounded-md p-3 border ${
-        highlight ? "border-blue-400 bg-blue-400/10" : "border-white/10 bg-white/10"
+        highlight ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-white/10'
       }`}
     >
       <div className="text-xs text-white/70 mb-2">
-        {gridLike ? " " : droppable ? "Pool (drag here to unassign)" : "Pool"}
+        {gridLike ? ' ' : droppable ? 'Pool (drag here to unassign)' : 'Pool'}
       </div>
       {children}
     </div>
@@ -452,15 +448,16 @@ const ParticipantCard = React.memo(function ParticipantCard({
 
   const style: React.CSSProperties = {
     opacity: draggable && isDragging ? 0.35 : 1,
-    cursor: draggable ? "grab" : "default",
-    touchAction: "none",
-    userSelect: "none",
-    outline: droppableToPool && isOverCard ? "1px solid rgba(96,165,250,0.6)" : "none",
+    cursor: draggable ? 'grab' : 'default',
+    touchAction: 'none',
+    userSelect: 'none',
+    outline: droppableToPool && isOverCard ? '1px solid rgba(96,165,250,0.6)' : 'none',
   };
 
-  const base = "border text-white rounded-md transition-all shadow-sm select-none";
-  const rankingLike = "border-white/10 bg-white/10 px-2 py-2 w-[180px] h-[80px] flex flex-col justify-between";
-  const simpleList = "border-white/10 bg-white/10 px-3 py-2 w-full";
+  const base = 'border text-white rounded-md transition-all shadow-sm select-none';
+  const rankingLike =
+    'border-white/10 bg-white/10 px-2 py-2 w-[180px] h-[80px] flex flex-col justify-between';
+  const simpleList = 'border-white/10 bg-white/10 px-3 py-2 w-full';
 
   return (
     <div
@@ -527,7 +524,7 @@ const SlotCard = React.memo(function SlotCard({
       ref={setNodeRef}
       onContextMenu={(e) => onContextMenu(team?.teamId ?? null, e)}
       className={`border rounded-md px-2 py-2 w-[180px] h-[80px] transition-all ${
-        isOver ? "border-blue-400 bg-blue-400/10" : "border-white/10 bg-white/10"
+        isOver ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-white/10'
       } text-white shadow-sm flex flex-col justify-between`}
     >
       <div className="text-[11px] opacity-70">Slot #{index + 1}</div>
@@ -542,7 +539,7 @@ function OverlayCard({ team }: { team: Team }) {
   return (
     <div
       className="border border-white/20 bg-white/10 text-white rounded-md px-3 py-2 shadow-lg"
-      style={{ willChange: "transform" }}
+      style={{ willChange: 'transform' }}
     >
       <span className="text-sm">{team.team_name}</span>
     </div>

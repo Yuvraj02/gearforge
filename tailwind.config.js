@@ -1,13 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './app/**/*.{js,ts,jsx,tsx}',     // App directory
-    './pages/**/*.{js,ts,jsx,tsx}',   // (if you're using pages dir too)
-    './components/**/*.{js,ts,jsx,tsx}', // Reusable components
+    "./app/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./pages/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      keyframes: {
+        fadeUp: {
+          "0%": { opacity: "0", transform: "translateY(16px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "fade-up": "fadeUp 0.6s ease-out both",
+      },
+    },
   },
   plugins: [],
-}
-
+};

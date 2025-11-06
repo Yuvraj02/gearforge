@@ -101,15 +101,31 @@ export default function TournamentsPage(): React.ReactElement {
 
   const isAdmin = isLoggedIn && role === 'admin'
   // Clickable card (no <Link> wrapper to avoid nested anchors)
-  const clickableCard = (t: Tournament, options?: { showRegister?: boolean; ariaLabel?: string }) => {
+ const clickableCard = (t: Tournament, options?: { showRegister?: boolean; ariaLabel?: string }) => {
   const go = () => router.push(`/tournaments/${t.tournament_id}`);
+
+  const onClickCard = (e: React.MouseEvent) => {
+    const el = e.target as HTMLElement;
+    if (el.closest('[data-interactive="true"]')) return; // ignore toggles/buttons
+    go();
+  };
+
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+    const el = e.target as HTMLElement;
+    if (el.closest('[data-interactive="true"]')) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      go();
+    }
   };
 
   return (
     <div key={t.tournament_id} className="inline-block mr-3 align-top overflow-visible">
-      <div role="link" tabIndex={0} onClick={go} onKeyDown={onKey}
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={onClickCard}
+        onKeyDown={onKey}
         aria-label={options?.ariaLabel ?? (t.status === 'ended' ? `View results for ${t.name}` : `Open ${t.name}`)}
         className="group rounded-xl overflow-visible cursor-pointer select-none transition-colors duration-150 focus:outline-none"
       >
@@ -118,13 +134,14 @@ export default function TournamentsPage(): React.ReactElement {
             t={t}
             live={t.status === 'live'}
             showRegister={!!options?.showRegister}
-            isAdmin={isAdmin}                // NEW
+            isAdmin={isAdmin}
           />
         </div>
       </div>
     </div>
   );
 };
+
 
   const listNode = (items: Tournament[], showRegister = false): React.ReactElement => (
     <div className="overflow-x-auto overflow-y-visible">

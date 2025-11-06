@@ -49,7 +49,7 @@ function GenreList() {
                         href={"/genres"}
                         className={
                             expandedGenre
-                                ? `block transition-all duration-300 ease-out mb-0 ml-0 p-1 visible text-left whitespace-normal break-words flex items-center gap-2 ${pathname === "/genres" || pathname === "/genres/" ? "bg-neutral-700 text-white rounded-xl" : "hover:text-white hover:rounded-xl"}`
+                                ? `transition-all duration-300 ease-out mb-0 ml-0 p-1 visible text-left whitespace-normal break-words flex items-center gap-2 ${pathname === "/genres" || pathname === "/genres/" ? "bg-neutral-700 text-white rounded-xl" : "hover:text-white hover:rounded-xl"}`
                                 : `h-0 w-0 left-0 invisible`
                         }
                     >
