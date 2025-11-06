@@ -1,274 +1,91 @@
 'use client';
 
-import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
-
-const imageList: string[] = ['/r6.png', '/fc-25.jpeg'];
-
-function Carousel() {
-  // Slides with clones at both ends for seamless loop
-  const slides = [imageList[imageList.length - 1], ...imageList, imageList[0]];
-  const realCount = imageList.length;
-
-  // Start at 1 (the first real slide)
-  const [current, setCurrent] = useState(1);
-  const [dragX, setDragX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-
-  // React-level transition toggle (for normal moves & snap-back)
-  const [transitionOn, setTransitionOn] = useState(true);
-
-  // Autoplay
-  const [autoPlay, setAutoPlay] = useState(true);
-
-  // Refs
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const widthRef = useRef(0);
-
-  // drag refs
-  const startXRef = useRef(0);
-  const lastXRef = useRef(0);
-  const lastTRef = useRef(0);
-
-  // Measure width (resizes too)
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const setW = () => {
-      widthRef.current = el.clientWidth;
-      // console.log('[width] =', widthRef.current);
-    };
-    setW();
-    const ro = new ResizeObserver(setW);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // ----- Auto-advance -----
-  useEffect(() => {
-    if (!autoPlay || isDragging || !transitionOn) return;
-    const id = setInterval(() => goNext(), 5000);
-    return () => clearInterval(id);
-  }, [autoPlay, isDragging, transitionOn, current]);
-
-  // After any user interaction we pause auto for 20s
-  useEffect(() => {
-    if (autoPlay) return;
-    const t = setTimeout(() => setAutoPlay(true), 20000);
-    return () => clearTimeout(t);
-  }, [autoPlay]);
-
-  // ----- Navigation: NEXT only (you said no arrows; swipe uses both directions) -----
-  const goNext = () => {
-    if (isDragging) return;
-    setAutoPlay(false);
-    setTransitionOn(true);
-    setDragX(0);
-    setCurrent((c) => {
-      const nv = c + 1;
-      // console.log('goNext:', c, '->', nv);
-      return nv;
-    });
-  };
-
-  // ----- Pointer events (mouse/touch/pen) -----
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    setAutoPlay(false);
-    setIsDragging(true);
-    setTransitionOn(false); // while actively dragging, disable transition
-    setDragX(0);
-    startXRef.current = e.clientX;
-    lastXRef.current = e.clientX;
-    lastTRef.current = performance.now();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    // console.log('[down] current=', current);
-  };
-
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-    const dx = e.clientX - startXRef.current;
-    setDragX(dx);
-    lastXRef.current = e.clientX;
-    lastTRef.current = performance.now();
-  };
-
-  const finishDrag = (clientX: number) => {
-    if (!isDragging) return;
-    setIsDragging(false);
-
-    const dx = clientX - startXRef.current;
-    const w = widthRef.current || 1;
-    const distanceThreshold = Math.max(80, w * 0.15);
-
-    const dt = Math.max(1, performance.now() - lastTRef.current);
-    const vx = (clientX - lastXRef.current) / dt; // px/ms
-    const velocityThreshold = 0.55 / 16;
-
-    setTransitionOn(true); // enable transition for settle animation
-    setDragX(0);
-
-    if (dx <= -distanceThreshold || vx < -velocityThreshold) {
-      // swipe left -> next
-      setCurrent((c) => c + 1);
-      // console.log('[finishDrag] LEFT -> next, new current scheduled');
-    } else if (dx >= distanceThreshold || vx > velocityThreshold) {
-      // swipe right -> prev
-      setCurrent((c) => c - 1);
-      // console.log('[finishDrag] RIGHT -> prev, new current scheduled');
-    } else {
-      // snap back (no index change)
-      // console.log('[finishDrag] snap back');
-    }
-  };
-
-  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-    finishDrag(e.clientX);
-  };
-
-  const onPointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-    setIsDragging(false);
-    setTransitionOn(true);
-    setDragX(0);
-  };
-
-  // ----- Transition end: fix clone → real with IMPERATIVE snap (no animation) -----
-  const handleTransitionEnd = () => {
-    // Log current state at the moment the slide animation completes
-    console.log(
-      `[handleTransitionEnd] current=${current}, realCount=${realCount}, transitionOn=${transitionOn}`
-    );
-
-    const track = trackRef.current;
-    if (!track) return;
-
-    if (current === 0) {
-      console.log('→ On LEFT clone, snapping to last real slide (imperative)');
-      // 1) Disable CSS transition on the element itself
-      track.style.transition = 'none';
-
-      // 2) Update React state to the last real slide
-      setCurrent(realCount);
-
-      // 3) Snap transform immediately to the last real slide
-      const w = widthRef.current || 0;
-      track.style.transform = `translateX(${-realCount * w}px)`;
-
-      // 4) Force reflow so the browser applies the snap right now
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      track.offsetHeight;
-
-      // 5) Re-enable React-driven transitions and clear inline override
-      requestAnimationFrame(() => {
-        track.style.transition = ''; // allow class-based transitions again
-        setTransitionOn(true);
-        console.log('→ Snap completed (LEFT). Transition re-enabled.');
-      });
-    } else if (current === realCount + 1) {
-      console.log('→ On RIGHT clone, snapping to first real slide (imperative)');
-      track.style.transition = 'none';
-      setCurrent(1);
-      const w = widthRef.current || 0;
-      track.style.transform = `translateX(${-1 * w}px)`;
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      track.offsetHeight;
-      requestAnimationFrame(() => {
-        track.style.transition = '';
-        setTransitionOn(true);
-        console.log('→ Snap completed (RIGHT). Transition re-enabled.');
-      });
-    } else {
-      console.log('→ Normal transition end (no clone correction)');
-    }
-  };
-
-  // ----- Derived transform (React-driven) -----
-  // Base position is the current slide offset plus any live drag delta
-  const x = -(current * (widthRef.current || 0)) + dragX;
-  const trackStyle = {
-    transform: `translateX(${x}px)`,
-  };
-  const trackClass = transitionOn
-    ? 'transition-transform duration-300 ease-out'
-    : 'transition-none';
+export default function Carousel() {
+  const bg = '/r6.png'; // make sure this exists in /public
 
   return (
-    /**
-     * Mobile: full-bleed (w-screen + centering).
-     * Desktop: width = 100vw - sidebar width; parent already accounts for sidebar margin.
-     */
-    <section
-      className="
-        relative select-none -mt-16
-        w-screen left-1/2 -translate-x-1/2
-        md:[--sidebar-w:15rem]
-        md:w-[calc(100vw-var(--sidebar-w))] md:left-auto md:translate-x-0
-      "
-    >
-      <div
-        ref={containerRef}
-        className="
-          relative h-[42vh] min-h-[16rem] md:h-[64vh]
-          overflow-hidden touch-pan-y
-          cursor-grab active:cursor-grabbing
-        "
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-      >
-        {/* Track */}
-        <div
-          ref={trackRef}
-          className={`absolute inset-0 flex ${trackClass}`}
-          style={trackStyle}
-          onTransitionEnd={handleTransitionEnd}
-        >
-          {slides.map((src, i) => (
-            <div key={`${src}-${i}`} className="relative w-full shrink-0">
-              <Image
-                src={src}
-                alt={`Slide ${i}`}
-                fill
-                priority={i === current} // current gets priority
-                draggable={false}
-                onDragStart={(e) => e.preventDefault()}
-                className="object-cover"
-                sizes="100vw"
-              />
-            </div>
-          ))}
+    <section className="hero" style={{ backgroundImage: `url('${bg}')` }}>
+      <div className="overlay" />
+      <div className="inner">
+        <div className="copy w-screen">
+          <h1 className="title fade-up delay-1 w-screen">Welcome to GearForge</h1>
+          <p className="subtitle fade-up delay-2">
+            Build your squad. Climb your division. Win real tournaments. GearForge levels the field so talent decides the outcome.
+          </p>
         </div>
       </div>
 
-      {/* Dots */}
-      <div className="flex w-full gap-2 justify-center mt-4">
-        {imageList.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            aria-label={`Go to slide ${i + 1}`}
-            className={`h-2.5 w-2.5 rounded-full ${
-              i === ((current - 1 + realCount) % realCount)
-                ? 'bg-blue-400'
-                : 'bg-white/80'
-            }`}
-            onClick={() => {
-              if (isDragging) return;
-              setAutoPlay(false);
-              setTransitionOn(true);
-              // Current is 1..N; dot index i maps to i+1
-              setCurrent(i + 1);
-              setDragX(0);
-            }}
-          />
-        ))}
-      </div>
+      <style jsx>{`
+        /* Sizing */
+        .hero {
+          position: relative;
+          width: 100%;
+          min-height: 18rem;
+          height: 64vh;
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          overflow: hidden;
+        }
+        @media (max-width: 768px) {
+          .hero { height: 42vh; }
+        }
+
+        /* Readability overlay */
+        .overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.7),
+            rgba(0, 0, 0, 0.35),
+            rgba(0, 0, 0, 0.2)
+          );
+        }
+
+        /* Content */
+        .inner {
+          position: relative;
+          z-index: 1;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          padding: 1rem;
+        }
+        @media (min-width: 640px) {
+          .inner { padding: 2rem; }
+        }
+        @media (min-width: 1024px) {
+          .inner { padding: 4rem; }
+        }
+
+        .copy { max-width: 72ch; }
+        .title {
+          margin: 0;
+          color: #fff;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          line-height: 1.1;
+          font-size: clamp(1.875rem, 4vw + 0.5rem, 3.5rem);
+        }
+        .subtitle {
+          margin-top: 0.75rem;
+          color: rgba(255, 255, 255, 0.9);
+          line-height: 1.5;
+          font-size: clamp(0.95rem, 1.2vw + 0.6rem, 1.25rem);
+        }
+
+        /* Animation */
+        @keyframes fadeUp {
+          0% { opacity: 0; transform: translateY(16px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up {
+          animation: fadeUp 0.6s ease-out both;
+        }
+        .delay-1 { animation-delay: 100ms; }
+        .delay-2 { animation-delay: 300ms; }
+      `}</style>
     </section>
   );
 }
-
-export default Carousel;
