@@ -1,7 +1,5 @@
 function Tournaments(){
-
-    return (<><div className="w-full h-fit p-2">Tournaments will be here</div></>)
+    return (<><div>Tournament data to be here.</div></>)
 }
-
 
 export default Tournaments

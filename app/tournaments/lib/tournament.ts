@@ -63,7 +63,8 @@ export function parseRaw(raw: unknown): Tournament {
     pool_price: toNumber(r.pool_price),
     entry_fee: toNumber(r.entry_fee),
     game_category: toString(r.game_type),
-    status:'live'
+    status:'live',
+    coming_soon: false
   };
 }
 
