@@ -33,7 +33,7 @@ export interface UserTournament {
 
 // export const API_BASE_URL: string = "http://localhost:8080";
 // export const API_BASE_URL: string = "http://107.20.59.138:8080";
-export const API_BASE_URL = "https://8b0d932613a1.ngrok-free.app ";
+export const API_BASE_URL = "https://8b0d932613a1.ngrok-free.app";
 
 // if (process.env.NEXT_NODE_ENV == "prod") {
 //   API_BASE_URL = process.env.NEXT_PUBLIC_BASE_API_PROD!;
