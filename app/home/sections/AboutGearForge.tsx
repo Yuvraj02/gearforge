@@ -1,4 +1,3 @@
-// ...existing code...
 'use client'
 
 import Link from 'next/link'
@@ -10,7 +9,6 @@ export default function AboutGearForge(): React.ReactElement {
   const [prizeCount, setPrizeCount] = useState(0)
 
   useEffect(() => {
-    // simple count animation
     const animate = (target: number, setter: (n: number) => void, duration = 900) => {
       let start = 0
       const step = Math.max(1, Math.floor(target / (duration / 16)))
@@ -25,13 +23,13 @@ export default function AboutGearForge(): React.ReactElement {
       }, 16)
     }
 
-    animate(120, setTournamentsCount)
-    animate(8200, setPlayersCount)
-    animate(2000000, setPrizeCount)
+    animate(1, setTournamentsCount)
+    animate(100, setPlayersCount)
+    animate(5000, setPrizeCount)
   }, [])
 
   const formatINR = (n: number) =>
-    n >= 1_000_000 ? `₹${(n / 1_000_000).toFixed(1)}M+` : `₹${n.toLocaleString()}`
+    n >= 1_000 ? `₹${(n / 1_000).toFixed(1)}K+` : `₹${n.toLocaleString()}`
 
   return (
     <section
@@ -59,15 +57,6 @@ export default function AboutGearForge(): React.ReactElement {
               aria-label="View all tournaments"
             >
               View Tournaments
-            </Link>
-
-            {/* Secondary: subtle white outline */}
-            <Link
-              href="/tournaments/create_tournament"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-white/20 text-white hover:bg-white/6 transition"
-              aria-label="Host a tournament"
-            >
-              Host a Tournament
             </Link>
           </div>
 
@@ -126,7 +115,7 @@ export default function AboutGearForge(): React.ReactElement {
           <div className="flex gap-4 flex-wrap items-center mt-6">
             <div className="bg-neutral-800/40 rounded-lg p-4 text-center min-w-[96px]">
               <div className="text-2xl font-bold text-white">{tournamentsCount}+</div>
-              <div className="text-xs text-neutral-400">Tournaments</div>
+              <div className="text-xs text-neutral-400">Tournament</div>
             </div>
 
             <div className="bg-neutral-800/40 rounded-lg p-4 text-center min-w-[96px]">
@@ -144,4 +133,3 @@ export default function AboutGearForge(): React.ReactElement {
     </section>
   )
 }
-// ...existing code...
