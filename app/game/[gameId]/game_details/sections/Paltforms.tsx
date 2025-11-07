@@ -8,11 +8,10 @@ interface PlatformsProps {
 }
 
 function Platforms({ gameId }: PlatformsProps) {
-  if (!gameId) return <div className="text-neutral-400">Platform information not available</div>
 
-  const { data: platforms, isLoading, isError } = usePlatformsQuery(gameId)
+  const { data: platforms, isLoading, isError } = usePlatformsQuery(gameId!)
   console.log("Platforms data:", platforms);
-
+  if (!gameId) return <div className="text-neutral-400">Platform information not available</div>
   if (isLoading) return <div className="text-neutral-400">Loading platforms…</div>
   if (isError) return <div className="text-rose-400">Failed to load platforms</div>
 
