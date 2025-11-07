@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { ChangeEvent, useEffect, useState } from 'react';
-import { login } from '../api';
+import { API_BASE_URL, login } from '../api';
 import { loginUser, setUser } from '../userSlice';
 import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
@@ -118,13 +118,7 @@ function AuthenticationPage() {
 
       try {
         setOauthPending(true);
-        let url: string = process.env.NEXT_PUBLIC_BASE_API_LOCAL!;
-        if (process.env.NEXT_NODE_ENV === 'prod') {
-          url = process.env.NEXT_PUBLIC_BASE_API_PROD!;
-        } else if (process.env.NEXT_NODE_ENV === 'dev') {
-          url = process.env.NEXT_PUBLIC_BASE_API_DEV!;
-        }
-
+        const url:string = API_BASE_URL
         const response = await axios.post(
           `${url}/auth/oauth/upsert`,
           {

@@ -95,11 +95,16 @@ export default function TournamentCard({
   }
 
   function toggleRegistration() {
-    const next = (t.registration_status === 'open' ? 'close' : 'open')
+    const next = (t.registration_status === 'open' ? 'close' : 'open') as 'open' | 'close'
     mutateMeta.mutate({
       registration_status: next,
       coming_soon: next === 'open' ? false : t.coming_soon ?? false,
     })
+  }
+
+  // Utility to stop bubbling to the clickable card wrapper
+  const stopAll = (e: React.SyntheticEvent) => {
+    e.stopPropagation()
   }
 
   return (
@@ -148,14 +153,13 @@ export default function TournamentCard({
 
         {live ? (
           <div className="mt-3 flex items-center justify-end">
-            {/* Optional: mark as interactive too, though navigating to same target is fine */}
             <Link
               href={`/tournaments/${encodeURIComponent(t.tournament_id)}`}
               className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-500"
               data-interactive="true"
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
+              onClick={stopAll}
+              onMouseDown={stopAll}
+              onKeyDown={stopAll}
             >
               View
             </Link>
@@ -190,12 +194,9 @@ export default function TournamentCard({
                     aria-disabled={regClosed}
                     tabIndex={regClosed ? -1 : 0}
                     data-interactive="true"
-                    onClick={(e) => {
-                      if (regClosed) e.preventDefault()
-                      e.stopPropagation()
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { if (regClosed) e.preventDefault(); stopAll(e) }}
+                    onMouseDown={stopAll}
+                    onKeyDown={stopAll}
                   >
                     {regClosed ? 'Closed' : 'Register'}
                   </Link>
@@ -207,9 +208,9 @@ export default function TournamentCard({
                     title="Tournament is full"
                     className="inline-flex items-center gap-2 px-3 py-2 bg-neutral-700 text-neutral-300 font-medium rounded cursor-not-allowed opacity-60"
                     data-interactive="true"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
+                    onClick={stopAll}
+                    onMouseDown={stopAll}
+                    onKeyDown={stopAll}
                   >
                     Full
                   </button>
@@ -225,18 +226,42 @@ export default function TournamentCard({
         )}
 
         {showAdminControls && (
-          <div className="mt-3 flex items-center justify-between gap-2 text-xs" data-interactive="true">
-            <label className="flex items-center gap-2">
+          <div
+            className="mt-3 flex items-center justify-between gap-2 text-xs"
+            data-interactive="true"
+            onClick={stopAll}
+            onMouseDown={stopAll}
+            onKeyDown={stopAll}
+          >
+            {/* Coming soon toggle */}
+            <label
+              className="flex items-center gap-2"
+              data-interactive="true"
+              onClick={stopAll}
+              onMouseDown={stopAll}
+              onKeyDown={stopAll}
+            >
               <span className="text-neutral-300">Coming soon</span>
               <input
                 type="checkbox"
                 className="h-4 w-4"
                 checked={!!t.coming_soon}
                 onChange={(e) => toggleComingSoon(e.target.checked)}
+                data-interactive="true"
+                onClick={stopAll}
+                onMouseDown={stopAll}
+                onKeyDown={stopAll}
               />
             </label>
 
-            <div className="flex items-center gap-2">
+            {/* Registration switch */}
+            <div
+              className="flex items-center gap-2"
+              data-interactive="true"
+              onClick={stopAll}
+              onMouseDown={stopAll}
+              onKeyDown={stopAll}
+            >
               <span className="text-neutral-300">Registrations</span>
               <button
                 type="button"
@@ -245,6 +270,8 @@ export default function TournamentCard({
                   t.registration_status === 'open' ? 'bg-emerald-600' : 'bg-neutral-600'
                 }`}
                 data-interactive="true"
+                onMouseDown={stopAll}
+                onKeyDown={stopAll}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
