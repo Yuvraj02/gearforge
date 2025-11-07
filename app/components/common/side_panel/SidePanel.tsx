@@ -9,7 +9,7 @@ import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import React, { useEffect } from 'react';
 import { togglePanel } from './sidePanelSlice';
 import { usePathname } from 'next/navigation';
-// import { MdSportsEsports } from "react-icons/md";
+import { MdSportsEsports } from "react-icons/md";
 
 export default function SidePanel() {
   const dispatch = useAppDispatch();
@@ -96,12 +96,12 @@ export default function SidePanel() {
           </Link>
 
           {/* <GenreList /> */}
-          {/* <Link href="/browse_games" onClick={closeOnMobile}>
+          <Link href="/browse_games" onClick={closeOnMobile}>
             <div className={panelItem}>
               <MdSportsEsports />
               <div>Browse Games</div>
             </div>
-          </Link> */}
+          </Link>
           
         </div>
       </aside>
