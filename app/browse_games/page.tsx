@@ -151,9 +151,11 @@ function BrowseGames(){
       fetchNextPage();
     }
   }, [inView, hasNextPage, isFetching, fetchNextPage]);
-
-  const games = data?.pages.flatMap((page) => page.data) ?? [];
-  const uniqueGames = useMemo(() => Array.from(new Map(games.map(game => [game.id, game])).values()), [games]);
+  
+  const uniqueGames = useMemo(() => {
+      const all = data?.pages.flatMap((p) => p.data) ?? [];
+      return Array.from(new Map(all.map(g => [g.id, g])).values());
+    }, [data]);
 
   // search query - when debouncedTerm present, fetch search results
   const { data: searchResults, isLoading: isSearching } = useQuery({
@@ -219,7 +221,9 @@ function BrowseGames(){
       {!loadingGrid && gamesToShow.length > 0 && (
         <>
           {debouncedTerm.length > 0 && (
-            <div className="mb-4 text-sm text-neutral-300">Showing results for <span className="font-semibold text-white">"{debouncedTerm}"</span></div>
+            <div className="mb-4 text-sm text-neutral-300">
+  Showing results for <span className="font-semibold text-white">&quot;{debouncedTerm}&quot;</span>
+</div>
           )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-x-15 gap-y-10">
