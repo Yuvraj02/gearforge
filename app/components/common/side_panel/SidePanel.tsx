@@ -61,7 +61,7 @@ export default function SidePanel() {
         `}
       >
         {/* Mobile-only logo/header row */}
-        <div className="sticky top-0 z-10 bg-[#242528] border-b border-white/10 px-4 py-3 md:hidden mt-14">
+        <div className="sticky top-0 z-10 bg-[#242528] border-b border-white/10 px-4 py-3 md:hidden mt-2">
           <Link
             href="/"
             className="flex items-center gap-2 select-none"
