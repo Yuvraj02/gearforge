@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import Link from 'next/link';
 import GameCard from '@/app/components/common/GameCard';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
 import SearchBar from '@/app/components/common/SearchBar';
@@ -167,6 +168,27 @@ function BrowseGames(){
 
   return (
     <div className="bg-transparent rounded-lg mx-auto max-w-7xl mb-8 px-4 sm:px-6 md:px-8 py-4">
+      {/* header: title + genres button */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-white">Browse Games</h2>
+
+        {/*Genres button */}
+        <Link
+          href="/genres"
+          className="inline-flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-white/95 to-neutral-200/95 text-neutral-900 rounded-full shadow-lg ring-1 ring-white/10 hover:shadow-xl hover:-translate-y-0.5 transform transition-all duration-150"
+          aria-label="Go to genres"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden className="flex-shrink-0">
+            <rect x="3" y="3" width="8" height="8" fill="currentColor" />
+            <rect x="13" y="3" width="8" height="8" fill="currentColor" />
+            <rect x="3" y="13" width="8" height="8" fill="currentColor" />
+            <rect x="13" y="13" width="8" height="8" fill="currentColor" />
+          </svg>
+
+          <span className="text-sm font-medium">Filter by Genres</span>
+        </Link>
+      </div>
+
       {/* Search bar replaces the "Recently Popular" heading */}
       <div className="mb-6 pb-3 border-b border-gray-700">
         <SearchBar
@@ -174,7 +196,7 @@ function BrowseGames(){
           type="text"
           placeholder="Search games, e.g. Valorant, FIFA, Apex..."
           className="w-full bg-neutral-800/20 text-neutral-300 px-4 py-3 rounded-xl flex items-center gap-3"
-          onTermChange={setSearchTerm} // receive term changes
+          onTermChange={setSearchTerm} 
         />
       </div>
 

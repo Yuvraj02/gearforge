@@ -2,42 +2,42 @@
   "games": [
     {
       "id": 1,
-      "name": "Counter-Strike 2",
+      "name": "BGMI",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6e5r.jpg"
       }
     },
     {
       "id": 2,
-      "name": "Call of Duty: Modern Warfare III",
+      "name": "Valorant",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6x6h.jpg"
       }
     },
     {
       "id": 3,
-      "name": "Grand Theft Auto V",
+      "name": "Counter-Strike:2",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2lbd.jpg"
       }
     },
     {
       "id": 4,
-      "name": "FIFA 24",
+      "name": "EA FC 26",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6t2h.jpg"
       }
     },
     {
       "id": 5, 
-      "name": "Red Dead Redemption 2",
+      "name": "Rainbow Six Siege",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1q1f.jpg"
       }
     },
     {
       "id": 6,
-      "name": "The Witcher 3: Wild Hunt",
+      "name": "Rocket League",
       "cover": {
         "url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg"
       }
