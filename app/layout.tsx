@@ -10,7 +10,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://gearforge.in"), // ← change to your prod URL
+  metadataBase: new URL("https://www.gearforge.in/"), // ← change to your prod URL
   title: {
     default: "GearForge",
     template: "%s · GearForge",
