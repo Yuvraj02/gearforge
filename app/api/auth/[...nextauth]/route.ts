@@ -9,11 +9,22 @@ interface GoogleProfile extends Profile {
   picture?: string;
 }
 
+if (!process.env.NEXT_GOOGLE_OAUTH_CLIENT_ID) {
+  throw new Error("Missing GOOGLE_OAUTH_CLIENT_ID");
+}
+if (!process.env.NEXT_GOOGLE_OAUTH_CLIENT_SECRET) {
+  throw new Error("Missing GOOGLE_OAUTH_CLIENT_SECRET");
+}
+if (!process.env.AUTH_SECRET) {
+  throw new Error("Missing AUTH_SECRET");
+}
+
 const handler = NextAuth({
+  secret:process.env.AUTH_SECRET,
   providers: [
     Google({
-      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
-      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+      clientSecret: process.env.NEXT_GOOGLE_OAUTH_CLIENT_SECRET!,
+      clientId: process.env.NEXT_GOOGLE_OAUTH_CLIENT_ID!,
     }),
   ],
   session: { strategy: "jwt" },

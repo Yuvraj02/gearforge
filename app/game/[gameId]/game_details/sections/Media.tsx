@@ -36,7 +36,7 @@ function Media({ gameModel }: MediaModel) {
     const vidQuery = useQuery({
         queryKey: [`${gameModel.id}_videos`],
         queryFn: async () => {
-            const response = await axios.post('/igdb/game_videos', `fields id,name,game,video_id; where game = ${gameModel.id};`, {
+            const response = await axios.post('/api/igdb/game_videos', `fields id,name,game,video_id; where game = ${gameModel.id};`, {
                 headers: requestHeaders
             })
             return response.data
@@ -46,7 +46,7 @@ function Media({ gameModel }: MediaModel) {
     const ssQuery = useQuery({
         queryKey: [`${gameModel.id}_ss`],
         queryFn: async () => {
-            const response = await axios.post('/igdb/screenshots', `fields id,game,url, image_id; where game = ${gameModel.id};`, {
+            const response = await axios.post('/api/igdb/screenshots', `fields id,game,url, image_id; where game = ${gameModel.id};`, {
                 headers: requestHeaders
             })
             return response.data

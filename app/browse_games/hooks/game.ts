@@ -4,18 +4,20 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 const apiKey: string = process.env.NEXT_PUBLIC_API_ACCESS_TOKEN!;
+const clientId : string  = process.env.NEXT_PUBLIC_IGDB_CLIENT_ID!;
 
 const requestHeaders = {
-  "Client-ID": "8t38bg3wjw6cfu643bmvww73yp3d0h",
+  "Client-ID": clientId,
   "Authorization": "Bearer " + apiKey
 };
 
 export function useHighestRatedQuery(limit = 20) {
+  // console.log(clientId, apiKey)
   return useQuery({
     queryKey: ["highest_rated", limit],
     queryFn: async () => {
       const { data } = await axios.post(
-        `/igdb/games`,
+        `/api/igdb/games`,
         `fields id, cover; sort rating desc; limit ${limit};`,
         { headers: requestHeaders }
       );
@@ -47,7 +49,7 @@ export function useCoversQuery(
     queryFn: async () => {
       const limit = Math.max(ids.length, 20);
       const { data } = await axios.post(
-        "/igdb/covers",
+        "/api/igdb/covers",
         `fields id,game,height,url,width,image_id; where game = (${ids.join(",")}); limit ${limit};`,
         { headers: requestHeaders }
       );

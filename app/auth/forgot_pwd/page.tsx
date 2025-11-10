@@ -36,7 +36,7 @@ function ForgotPassword(){
                         <span>{false? <p className="text-red-600" >User does not exist</p> : ""}</span>
                         <div className="flex gap-2">
                           
-                            <button onClick={handleSendResetEmailClick} className="border p-2 w-full rounded-xl cursor-pointer hover:bg-blue-500 hover:text-white transition-all duration-200 ease-in-out">Send Password Reset Mail</button >
+                            <button type="submit" onClick={handleSendResetEmailClick} className="border p-2 w-full rounded-xl cursor-pointer hover:bg-blue-500 hover:text-white transition-all duration-200 ease-in-out">Send Password Reset Mail</button >
                         </div>
                     </div>
                 </form>

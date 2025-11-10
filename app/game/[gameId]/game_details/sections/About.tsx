@@ -3,6 +3,7 @@
 import { useAppSelector } from "@/app/hooks"
 import { GameModel } from "@/app/models/game_model"
 import { format, fromUnixTime } from 'date-fns'
+import { useFranchiseQuery, useGameEngineQuery } from "@/app/game/hooks/game"
 
 interface AboutProps {
     gameModel: GameModel
@@ -34,6 +35,18 @@ function About({ gameModel, companies_name }: AboutProps) {
         })
     }
 
+    // Franchise query using the provided hook
+    const { data: franchise, isLoading: franchiseLoading } = useFranchiseQuery(gameModel.id)
+    const franchiseName = franchiseLoading
+        ? 'Loading...'
+        : franchise && franchise.name
+        ? franchise.name
+        : 'N/A'
+
+    // Game engines query using the new hook
+    const { data: engineNames, isLoading: enginesLoading } = useGameEngineQuery(gameModel.id)
+    const enginesDisplay = enginesLoading ? 'Loading...' : (engineNames && engineNames.length > 0 ? engineNames.join(', ') : 'N/A')
+
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-white">
             <div className="font-semibold text-gray-400">Name</div>
@@ -43,7 +56,7 @@ function About({ gameModel, companies_name }: AboutProps) {
             <div>{gameModel.first_release_date ? format(fromUnixTime(gameModel.first_release_date), 'dd/MM/yyyy') : 'N/A'}</div>
             
             <div className="font-semibold text-gray-400">Franchise</div>
-            <div>[Names]</div> {/* Placeholder */}
+            <div>{franchiseName}</div>
             
             <div className="font-semibold text-gray-400">Player Perspective</div>
             <div>{player_perspectives.length > 0 ? player_perspectives.join(", ") : 'NA'}</div>
@@ -52,7 +65,7 @@ function About({ gameModel, companies_name }: AboutProps) {
             <div>{companies_name.length > 0 ? companies_name.join(", ") : 'N/A'}</div>
             
             <div className="font-semibold text-gray-400">Game Engines</div>
-            <div>Unreal, Unity</div> {/* Placeholder */}
+            <div>{enginesDisplay}</div>
 
             <div className="font-semibold text-gray-400">Genres</div>
             <div>{genres.length > 0 ? genres.join(", ") : 'N/A'}</div>

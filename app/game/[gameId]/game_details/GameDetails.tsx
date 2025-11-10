@@ -25,7 +25,7 @@ function GameDetails({ gameModel, companiesName }: GameDetailsProps) {
             case 'Media':
                 return <Media gameModel={gameModel} />
             case 'Platforms':
-                return <Platforms />
+                return <Platforms gameId={gameModel.id}/>
             default:
                 return <div>Some Error</div>
         }

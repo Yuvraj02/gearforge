@@ -1,0 +1,46 @@
+{
+  "games": [
+    {
+      "id": 1,
+      "name": "BGMI",
+      "cover": {
+        "url": "https://images.igdb.com/igdb/image/upload/t_original/co49rw.jpg"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Valorant",
+      "cover": {
+        "url": "https://images.igdb.com/igdb/image/upload/t_original/coa7oc.jpg"
+      }
+    },
+    {
+      "id": 3,
+      "name": "Counter-Strike:2",
+      "cover": {
+        "url": "https://images.igdb.com/igdb/image/upload/t_original/coaczd.jpg"
+      }
+    },
+    {
+      "id": 4,
+      "name": "EA FC 26",
+      "cover": {
+        "url": "https://images.igdb.com/igdb/image/upload/t_original/coa5wx.jpg"
+      }
+    },
+    {
+      "id": 5, 
+      "name": "Rainbow Six Siege",
+      "cover": {
+        "url": "https://images.igdb.com/igdb/image/upload/t_original/co9yqs.jpg"
+      }
+    },
+    {
+      "id": 6,
+      "name": "Rocket League",
+      "cover": {
+        "url": "https://images.igdb.com/igdb/image/upload/t_original/coaiyq.jpg"
+      }
+    }
+  ]
+}
