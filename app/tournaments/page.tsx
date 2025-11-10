@@ -31,8 +31,8 @@ type ApiTournament = {
   tournament_date: string;
   min_team_size: number | null;
   max_team_size: number | null;
-  coming_soon: boolean | null;                // NEW
-  registration_status: 'open' | 'close' | null; // NEW
+  coming_soon: boolean | null;
+  registration_status: 'open' | 'close' | null;
 };
 
 type ApiResponse =
@@ -81,7 +81,7 @@ function normalize(t: ApiTournament): Tournament {
 export default function TournamentsPage(): React.ReactElement {
   const router = useRouter();
   const isLoggedIn = useAppSelector((s) => s.users.isLoggedIn);
-  const role = useAppSelector((s) => s.users.user.role);
+  const role = useAppSelector((s) => s.users.user?.role);
 
   const { data, isLoading, isError, error } = useQuery<ApiResponse, Error>({
     queryKey: ['tournaments'],
@@ -99,66 +99,75 @@ export default function TournamentsPage(): React.ReactElement {
     .sort((a, b) => a.start_date.getTime() - b.start_date.getTime());
   const ended = list.filter((t) => t.status === 'ended');
 
-  const isAdmin = isLoggedIn && role === 'admin'
-  // Clickable card (no <Link> wrapper to avoid nested anchors)
- const clickableCard = (t: Tournament, options?: { showRegister?: boolean; ariaLabel?: string }) => {
-  const go = () => router.push(`/tournaments/${t.tournament_id}`);
+  const isAdmin = isLoggedIn && role === 'admin';
 
-  const onClickCard = (e: React.MouseEvent) => {
-    const el = e.target as HTMLElement;
-    if (el.closest('[data-interactive="true"]')) return; // ignore toggles/buttons
-    go();
-  };
+  const clickableCard = (
+    t: Tournament,
+    options?: { showRegister?: boolean; ariaLabel?: string }
+  ) => {
+    const go = () => router.push(`/tournaments/${t.tournament_id}`);
 
-  const onKey = (e: React.KeyboardEvent) => {
-    const el = e.target as HTMLElement;
-    if (el.closest('[data-interactive="true"]')) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
+    const onClickCard = (e: React.MouseEvent) => {
+      const el = e.target as HTMLElement;
+      if (el.closest('[data-interactive="true"]')) return;
       go();
-    }
-  };
+    };
 
-  return (
-    <div key={t.tournament_id} className="inline-block mr-3 align-top overflow-visible">
-      <div
-        role="link"
-        tabIndex={0}
-        onClick={onClickCard}
-        onKeyDown={onKey}
-        aria-label={options?.ariaLabel ?? (t.status === 'ended' ? `View results for ${t.name}` : `Open ${t.name}`)}
-        className="group rounded-xl overflow-visible cursor-pointer select-none transition-colors duration-150 focus:outline-none"
-      >
-        <div className="rounded-xl p-[1px] bg-transparent transition-colors duration-150 group-hover:bg-white/12 group-focus-visible:bg-white/20">
-          <TournamentCard
-            t={t}
-            live={t.status === 'live'}
-            showRegister={!!options?.showRegister}
-            isAdmin={isAdmin}
-          />
+    const onKey = (e: React.KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (el.closest('[data-interactive="true"]')) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        go();
+      }
+    };
+
+    return (
+      <div key={t.tournament_id} className="inline-block mr-3 align-top overflow-visible">
+        <div
+          role="link"
+          tabIndex={0}
+          onClick={onClickCard}
+          onKeyDown={onKey}
+          aria-label={
+            options?.ariaLabel ??
+            (t.status === 'ended' ? `View results for ${t.name}` : `Open ${t.name}`)
+          }
+          className="group rounded-xl overflow-visible cursor-pointer select-none transition-colors duration-150 focus:outline-none"
+        >
+          <div className="rounded-xl p-[1px] bg-transparent transition-colors duration-150 group-hover:bg-white/12 group-focus-visible:bg-white/20">
+            <TournamentCard
+              t={t}
+              live={t.status === 'live'}
+              showRegister={!!options?.showRegister}
+              isAdmin={isAdmin}
+            />
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
-
+    );
+  };
 
   const listNode = (items: Tournament[], showRegister = false): React.ReactElement => (
     <div className="overflow-x-auto overflow-y-visible">
       <div className="py-2 px-2 sm:px-4">
-        <DraggableScroll>
-          {items.map((t) => clickableCard(t, { showRegister }))}
-        </DraggableScroll>
+        <DraggableScroll>{items.map((t) => clickableCard(t, { showRegister }))}</DraggableScroll>
       </div>
     </div>
   );
+
+  // 404 / "Not even a single tournament found" case
+  const isNotFound =
+    isError &&
+    (error?.message?.includes('404') ||
+      error?.message?.includes('Not even a single tournament found'));
 
   return (
     <div className="flex min-h-screen w-full">
       <div className="flex flex-col w-full min-h-screen gap-8 p-6">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-white">Tournaments</h1>
-          {isLoggedIn && role === 'admin' ? (
+          {isAdmin ? (
             <Link
               href="/tournaments/create_tournament"
               className="inline-flex items-center gap-2 px-3 py-2 bg-amber-600 text-black font-medium rounded hover:bg-amber-500"
@@ -171,10 +180,9 @@ export default function TournamentsPage(): React.ReactElement {
         </header>
 
         {isLoading && <div className="text-neutral-300">Loading…</div>}
-        {isError && (
-          <div className="text-rose-400 text-sm">
-            {(error && error.message) || 'Failed to load tournaments'}
-          </div>
+
+        {isNotFound && (
+          <div className="text-sm text-neutral-400">No Recent Tournaments</div>
         )}
 
         {!isLoading && !isError && (
@@ -215,6 +223,13 @@ export default function TournamentsPage(): React.ReactElement {
               )}
             </section>
           </>
+        )}
+
+        {/* If some other error (not 404), show the original message */}
+        {isError && !isNotFound && (
+          <div className="text-rose-400 text-sm">
+            {(error && error.message) || 'Failed to load tournaments'}
+          </div>
         )}
       </div>
     </div>

@@ -10,7 +10,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://your-domain.com"), // ← change to your prod URL
+  metadataBase: new URL("https://gearforge.in"), // ← change to your prod URL
   title: {
     default: "GearForge",
     template: "%s · GearForge",
@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <NavBar />
           <SidePanel />
-          <div className="pt-16 md:ml-60">{children}</div>
+          <div className="pt-14 md:ml-60">{children}</div>
         </Providers>
       </body>
     </html>

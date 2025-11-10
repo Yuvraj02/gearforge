@@ -10,7 +10,6 @@ import TournamentCard from '@/app/components/common/TournamentCard';
 import DraggableScroll from '@/app/components/common/DraggableScroll';
 import { useAppSelector } from '@/app/hooks';
 
-// ---- API shapes coming from backend ----
 type ApiTournament = {
   tournament_id: string;
   name: string;
@@ -32,7 +31,6 @@ type ApiTournament = {
   tournament_date: string;
   min_team_size: number | null;
   max_team_size: number | null;
-  // if your API already returns these, keep them; otherwise they'll be undefined
   coming_soon?: boolean;
   registration_status?: 'open' | 'close';
 };
@@ -41,7 +39,6 @@ type ApiResponse =
   | { status: 'success'; data: ApiTournament[] }
   | { status: 'error'; data: unknown };
 
-// ---- small helpers (same as your /tournaments page) ----
 function toNumber(n: string | number | null | undefined): number {
   if (typeof n === 'number') return n;
   const v = Number(n);
@@ -76,8 +73,8 @@ function normalize(t: ApiTournament): Tournament {
     updated_at: toDate(t.updated_at),
     status: t.status,
     tournament_date: toDate(t.tournament_date),
-    coming_soon: t.coming_soon ?? false,                 // pass-through if present
-    registration_status: t.registration_status, // pass-through if present
+    coming_soon: t.coming_soon ?? false,
+    registration_status: t.registration_status,
   };
 }
 
@@ -90,7 +87,7 @@ function Section({
   count: number;
   children: React.ReactNode;
 }) {
-  if (count === 0) return null; // hide whole section if empty
+  if (count === 0) return null;
   return (
     <section className="mt-2">
       <div className="flex items-center justify-between mb-4">
@@ -108,25 +105,48 @@ export default function Tournaments(): React.ReactElement | null {
   const role = useAppSelector((s) => s.users.user?.role);
   const isAdmin = isLoggedIn && role === 'admin';
 
-  const { data, isLoading, isError } = useQuery<ApiResponse, Error>({
+  const {
+    data: list,
+    isLoading,
+    isError,
+    error,
+  } = useQuery<ApiResponse, Error, Tournament[]>({
     queryKey: ['tournaments'],
     queryFn: getTournaments,
+    select: (resp) => {
+      if (resp.status === 'success' && Array.isArray(resp.data)) {
+        return resp.data.map(normalize);
+      }
+      return [];
+    },
   });
 
-  const list: Tournament[] =
-    data && data.status === 'success' && Array.isArray(data.data)
-      ? data.data.map(normalize)
-      : [];
+  // silently skip while loading
+  if (isLoading) {
+    return null;
+  }
 
-  const live = list.filter((t) => t.status === 'live');
-  const upcoming = list
+  const tournaments = list ?? [];
+  const live = tournaments.filter((t) => t.status === 'live');
+  const upcoming = tournaments
     .filter((t) => t.status === 'upcoming')
     .sort((a, b) => a.start_date.getTime() - b.start_date.getTime());
 
-  // If nothing to show and not loading, render nothing on Home
-  if (!isLoading && !isError && live.length === 0 && upcoming.length === 0) return null;
+  const isNotFound =
+    isError &&
+    (error?.message?.includes('404') || error?.name === 'NotFoundError');
 
-  const clickableCard = (t: Tournament, options?: { showRegister?: boolean; ariaLabel?: string }) => {
+  if (isNotFound || (live.length === 0 && upcoming.length === 0)) {
+    if (isError) {
+      console.error('Tournaments not shown due to error:', error);
+    }
+    return null;
+  }
+
+  const clickableCard = (
+    t: Tournament,
+    options?: { showRegister?: boolean; ariaLabel?: string },
+  ) => {
     const go = () => router.push(`/tournaments/${t.tournament_id}`);
     const onKey = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -140,24 +160,15 @@ export default function Tournaments(): React.ReactElement | null {
         <div
           role="link"
           tabIndex={0}
-          aria-label={options?.ariaLabel ?? (t.status === 'ended' ? `View results for ${t.name}` : `Open ${t.name}`)}
+          aria-label={
+            options?.ariaLabel ??
+            (t.status === 'ended' ? `View results for ${t.name}` : `Open ${t.name}`)
+          }
           onClick={go}
           onKeyDown={onKey}
-          className={[
-            'group rounded-xl overflow-visible cursor-pointer select-none',
-            'transition-colors duration-150',
-            'focus:outline-none',
-          ].join(' ')}
+          className="group rounded-xl overflow-visible cursor-pointer select-none transition-colors duration-150 focus:outline-none"
         >
-          <div
-            className={[
-              'rounded-xl p-[1px]',
-              'bg-transparent',
-              'transition-colors duration-150',
-              'group-hover:bg-white/12',
-              'group-focus-visible:bg-white/20',
-            ].join(' ')}
-          >
+          <div className="rounded-xl p-[1px] bg-transparent transition-colors duration-150 group-hover:bg-white/12 group-focus-visible:bg-white/20">
             <TournamentCard
               t={t}
               live={t.status === 'live'}
@@ -182,10 +193,7 @@ export default function Tournaments(): React.ReactElement | null {
 
   return (
     <div className="w-full h-fit px-4 sm:px-6 md:px-8 py-6">
-      {isLoading && <div className="text-neutral-300">Loading…</div>}
-      {isError && <div className="text-rose-400 text-sm">Failed to load tournaments.</div>}
-
-      {!isLoading && !isError && (
+      {!isError && (
         <>
           <Section title="Live Tournaments" count={live.length}>
             {listRow(live)}
@@ -194,7 +202,6 @@ export default function Tournaments(): React.ReactElement | null {
           <Section title="Upcoming Tournaments" count={upcoming.length}>
             {listRow(upcoming, true)}
           </Section>
-          {/* No "Ended" on Home by requirement */}
         </>
       )}
     </div>
