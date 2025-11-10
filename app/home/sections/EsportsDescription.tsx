@@ -27,11 +27,15 @@ export default function EsportsDescription(): React.ReactElement {
 
         {/* Right: Content */}
         <div className="w-full md:w-7/12 lg:w-8/12 md:pl-4">
-          <h2 id="esports-heading" className="text-2xl md:text-3xl font-extrabold text-white">
+          <h2
+            id="esports-heading"
+            className="text-2xl md:text-3xl font-extrabold text-white"
+          >
             What is e-sports and why it matters
           </h2>
 
-          <p className="mt-4 text-neutral-300 leading-relaxed max-w-3xl">
+          {/* justify on small, left on md+ */}
+          <p className="mt-4 text-neutral-300 leading-relaxed max-w-3xl text-justify md:text-left">
             E-sports is competitive gaming organized at every level, from local cups to global
             championships. It blends teamwork, strategy and fast execution with live events,
             ladders and real rewards. It gives players a clear path to compete, improve and get
@@ -43,16 +47,18 @@ export default function EsportsDescription(): React.ReactElement {
               <span className="flex-none w-9 h-9 rounded-lg bg-white/10 text-white grid place-items-center">
                 1
               </span>
-              <div>
+              <div className="text-justify md:text-left">
                 <div className="font-semibold text-white">Organized competition</div>
-                <div className="text-neutral-400">Structured brackets, fair rules, instant results.</div>
+                <div className="text-neutral-400">
+                  Structured brackets, fair rules, instant results.
+                </div>
               </div>
             </li>
             <li className="flex gap-3 items-start">
               <span className="flex-none w-9 h-9 rounded-lg bg-white/10 text-white grid place-items-center">
                 2
               </span>
-              <div>
+              <div className="text-justify md:text-left">
                 <div className="font-semibold text-white">Player growth</div>
                 <div className="text-neutral-400">Rank up, join teams, find your level.</div>
               </div>
@@ -61,7 +67,7 @@ export default function EsportsDescription(): React.ReactElement {
               <span className="flex-none w-9 h-9 rounded-lg bg-white/10 text-white grid place-items-center">
                 3
               </span>
-              <div>
+              <div className="text-justify md:text-left">
                 <div className="font-semibold text-white">Spectator experience</div>
                 <div className="text-neutral-400">Streams, live brackets and community.</div>
               </div>
@@ -70,7 +76,7 @@ export default function EsportsDescription(): React.ReactElement {
               <span className="flex-none w-9 h-9 rounded-lg bg-white/10 text-white grid place-items-center">
                 4
               </span>
-              <div>
+              <div className="text-justify md:text-left">
                 <div className="font-semibold text-white">Real rewards</div>
                 <div className="text-neutral-400">Prize pools, sponsors, visibility.</div>
               </div>
@@ -85,7 +91,6 @@ export default function EsportsDescription(): React.ReactElement {
               Explore Tournaments
             </Link>
 
-            {/* Discord */}
             <Link
               href="https://discord.gg/J8cS4Tds"
               className="inline-flex items-center gap-2 px-4 py-2 border border-white/20 text-white rounded-md transition-colors duration-200 hover:bg-[#5865F2] hover:text-white"
@@ -93,7 +98,6 @@ export default function EsportsDescription(): React.ReactElement {
               Join Discord community
             </Link>
 
-            {/* Reddit */}
             <Link
               href="https://www.reddit.com/r/gearforge/"
               className="inline-flex items-center gap-2 px-4 py-2 border border-white/20 text-white rounded-md transition-colors duration-200 hover:bg-[#FF4500] hover:text-white"
