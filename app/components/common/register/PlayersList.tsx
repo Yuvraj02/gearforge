@@ -8,6 +8,7 @@ export type PlayerRow = {
   role: "captain" | "member";
   status: "verified" | "pending" | "ineligible" | "not_found" | "error";
   note?: string;
+  user_id?: string; 
 };
 
 type Props = {

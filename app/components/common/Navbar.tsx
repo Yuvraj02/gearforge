@@ -9,6 +9,7 @@ import { togglePanel } from "./side_panel/sidePanelSlice";
 import Image from "next/image";
 import UserMenu from "./UserMenu";
 import React from "react";
+import NotificationsBell from "./NotificationsBell";
 
 function NavBar() {
   const pathName: string = usePathname();
@@ -101,61 +102,69 @@ function NavBar() {
         )}
 
         {/* Right */}
-        <nav className="flex gap-4 h-full items-center whitespace-nowrap overflow-x-auto no-scrollbar">
-          {navLinks.map((link) => {
-            const isActive = pathName === link.href;
-            return (
-              <Link
-                key={link.name}
-                href={link.href}
-                className={`relative flex items-center px-2 py-1 hover:text-white ${isActive ? "text-blue-400" : ""
-                  } text-sm md:text-[1rem] group`}
-              >
-                {link.name}
-                <span
-                  className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${isActive ? "w-full" : "w-0 group-hover:w-full"
-                    }`}
-                />
-              </Link>
-            );
-          })}
+<nav className="flex gap-4 h-full items-center whitespace-nowrap overflow-x-auto no-scrollbar">
+  {navLinks.map((link) => {
+    const isActive = pathName === link.href;
+    return (
+      <Link
+        key={link.name}
+        href={link.href}
+        className={`relative flex items-center px-2 py-1 hover:text-white ${
+          isActive ? "text-blue-400" : ""
+        } text-sm md:text-[1rem] group`}
+      >
+        {link.name}
+        <span
+          className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${
+            isActive ? "w-full" : "w-0 group-hover:w-full"
+          }`}
+        />
+      </Link>
+    );
+  })}
 
-          {/* Auth UI */}
-          {!hasHydrated ? (
-            <div
-              className="relative flex items-center justify-center overflow-hidden"
-              style={{ minWidth: "7rem", height: "2rem" }}
-            >
-              <span
-                className="inline-block h-4 w-4 rounded-full border border-neutral-600 border-t-neutral-100 animate-spin"
-                aria-label="Loading"
-              />
-            </div>
-          ) : !isLoggedIn ? (
-            <Link
-              href="/auth"
-              className={`relative flex items-center px-2 py-1 hover:text-white ${pathName === "/auth" ? "text-blue-400" : ""
-                } text-sm md:text-[1rem] group`}
-            >
-              Sign In
-              <span
-                className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${pathName === "/auth" ? "w-full" : "w-0 group-hover:w-full"
-                  }`}
-              />
-            </Link>
-          ) : (
-            <div
-              className="relative flex items-center justify-center"
-              style={{ minWidth: "7rem", height: "2rem" }}
-            >
-              <UserMenu
-                username={displayName}
-                division={division}
-                divisionPoints={divisionPoints}
-              />
-            </div>
-          )}
-        </nav>
+  {!hasHydrated ? (
+    <div
+      className="relative flex items-center justify-center overflow-hidden"
+      style={{ minWidth: "7rem", height: "2rem" }}
+    >
+      <span
+        className="inline-block h-4 w-4 rounded-full border border-neutral-600 border-t-neutral-100 animate-spin"
+        aria-label="Loading"
+      />
+    </div>
+  ) : !isLoggedIn ? (
+    <Link
+      href="/auth"
+      className={`relative flex items-center px-2 py-1 hover:text-white ${
+        pathName === "/auth" ? "text-blue-400" : ""
+      } text-sm md:text-[1rem] group`}
+    >
+      Sign In
+      <span
+        className={`absolute bottom-0 left-0 h-[2px] bg-blue-400 transition-all duration-300 ease-out origin-left ${
+          pathName === "/auth" ? "w-full" : "w-0 group-hover:w-full"
+        }`}
+      />
+    </Link>
+  ) : (
+    <div className="flex items-center gap-2 ">
+      <NotificationsBell teamCaptainId={user?.user_id ?? ""} />
+
+      <div
+        className="relative flex items-center justify-center"
+        style={{ minWidth: "7rem", height: "2rem" }}
+      >
+        <UserMenu
+          username={displayName}
+          division={division}
+          divisionPoints={divisionPoints}
+        />
+      </div>
+    </div>
+  )}
+</nav>
+
       </div>
 
       {/* Mobile Search below nav */}

@@ -1,5 +1,8 @@
+import { Suspense } from "react"
 import RegisterTournament from "../../components/common/RegisterTournment"
 
 export default function RegisterPage() {
-  return <RegisterTournament />
+  return (<Suspense>
+    <RegisterTournament />
+  </Suspense>)
 }
