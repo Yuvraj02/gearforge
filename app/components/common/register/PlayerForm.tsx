@@ -2,9 +2,11 @@
 
 import React from "react";
 
-export type NewPlayer = { email: string; username: string; division?: number };
+// include user_id here so the caller receives it
+export type NewPlayer = { email: string; username: string; division?: number; user_id?: string };
 
-type LookupResult = { username: string; name: string; division: number };
+// carry user_id in the lookup result too
+type LookupResult = { username: string; name: string; division: number; user_id: string };
 
 type Props = {
   onAdd: (player: NewPlayer) => void;
@@ -46,7 +48,7 @@ export default function PlayerForm({
     }
     setErrEmail(null);
 
-    // duplicate email guard (against captain/added members)
+    // duplicate email guard
     if (existingEmails.some((em) => em.toLowerCase() === trimmed.toLowerCase())) {
       setNotFoundMsg("This player is already in the team.");
       return;
@@ -57,26 +59,19 @@ export default function PlayerForm({
       const res = await onLookup(trimmed);
       if (res && res.username && res.name) {
         // duplicate username guard
-        if (
-          existingUsernames.some(
-            (u) => u.toLowerCase() === res.username.toLowerCase()
-          )
-        ) {
+        if (existingUsernames.some((u) => u.toLowerCase() === res.username.toLowerCase())) {
           setNotFoundMsg("This player is already in the team.");
           return;
         }
         setFound(res);
       } else {
-        setNotFoundMsg(
-          "Player not found. Ask them to register on GearForge before adding."
-        );
+        setNotFoundMsg("Player not found. Ask them to register on GearForge before adding.");
       }
     } finally {
       setChecking(false);
     }
   };
 
-  // Decide eligibility text & whether Add is enabled
   const verdict = React.useMemo(() => {
     if (!found) return null;
     const pd = found.division;
@@ -99,8 +94,14 @@ export default function PlayerForm({
 
   const handleAdd = () => {
     if (!found) return;
-    if (verdict?.status === "block") return; // hard block
-    onAdd({ email: email.trim(), username: found.username, division: found.division });
+    if (verdict?.status === "block") return;
+    // PASS user_id through to parent
+    onAdd({
+      email: email.trim(),
+      username: found.username,
+      division: found.division,
+      user_id: found.user_id,
+    });
   };
 
   const addDisabled =
@@ -127,9 +128,7 @@ export default function PlayerForm({
               if (found) setFound(null);
               if (notFoundMsg) setNotFoundMsg(null);
             }}
-            className={`w-full bg-[#141518] border ${
-              errEmail ? "border-red-600" : "border-black/60"
-            } rounded-xl px-3 py-2 text-white focus:outline-none`}
+            className={`w-full bg-[#141518] border ${errEmail ? "border-red-600" : "border-black/60"} rounded-xl px-3 py-2 text-white focus:outline-none`}
             placeholder="player@email.com"
           />
           {errEmail && <div className="text-xs text-red-400 mt-1">{errEmail}</div>}
@@ -189,9 +188,7 @@ export default function PlayerForm({
           onClick={handleAdd}
           disabled={addDisabled}
           className={`px-3 py-2 rounded-lg ${
-            addDisabled
-              ? "bg-[#222327] text-gray-500 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-500 text-white"
+            addDisabled ? "bg-[#222327] text-gray-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white"
           }`}
           title={
             !found

@@ -66,9 +66,40 @@ export default function TournamentCard({
   const registered = toNumber(t.registered_slots)
   const progress = totalSlots > 0 ? Math.round((registered / totalSlots) * 100) : 0
   const isFull = totalSlots > 0 && registered >= totalSlots
-  const coverOk =
-    !!t.cover && (t.cover as string).trim().toLowerCase() !== 'none' && !imgError
   const showAdminControls = !!isAdmin && t.status === 'upcoming'
+
+  // ---------- IMAGE NORMALIZATION + DEBUG ----------
+  const rawCover = (t.cover ?? '').trim()
+
+  let src = ''
+  if (rawCover && rawCover.toLowerCase() !== 'none') {
+    if (rawCover.includes('/uploads/')) {
+      // Handle things like "http://localhost:8080/uploads/bgmit2.jpeg"
+      const idx = rawCover.indexOf('/uploads/')
+      src = rawCover.slice(idx) // -> "/uploads/bgmit2.jpeg"
+    } else if (rawCover.startsWith('http')) {
+      // Other full URLs (e.g. IGDB), if you ever have them
+      src = rawCover
+    } else if (rawCover.startsWith('/')) {
+      // Already a root-relative path
+      src = rawCover
+    } else {
+      // Just a filename -> assume it's under /uploads
+      src = `/uploads/${rawCover.replace(/^\/+/, '')}`
+    }
+  }
+
+  const coverOk = !!src && !imgError
+
+  console.log('[TournamentCard] render', {
+    id: t.tournament_id,
+    name: t.name,
+    rawCover,
+    normalizedSrc: src,
+    coverOk,
+    imgError,
+  })
+  // -------------------------------------------------
 
   type PatchBody = {
     registration_status?: 'open' | 'close'
@@ -102,7 +133,6 @@ export default function TournamentCard({
     })
   }
 
-  // Utility to stop bubbling to the clickable card wrapper
   const stopAll = (e: React.SyntheticEvent) => {
     e.stopPropagation()
   }
@@ -117,12 +147,25 @@ export default function TournamentCard({
       <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
         {coverOk ? (
           <Image
-            src={t.cover as string}
+            src={src}
             alt={t.name}
             fill
             sizes="(max-width:480px) 80vw, (max-width:1024px) 45vw, 320px"
             style={{ objectFit: 'cover' }}
-            onError={() => setImgError(true)}
+            unoptimized // ⬅ IMPORTANT: bypass Next image optimizer
+            onLoad={() => {
+              console.log('[TournamentCard] image onLoad', {
+                id: t.tournament_id,
+                src,
+              })
+            }}
+            onError={() => {
+              console.error('[TournamentCard] image onError', {
+                id: t.tournament_id,
+                src,
+              })
+              setImgError(true)
+            }}
             priority={false}
           />
         ) : (
@@ -130,6 +173,7 @@ export default function TournamentCard({
             Image not available
           </div>
         )}
+
 
         {live && (
           <span className="absolute top-3 left-3 bg-rose-600 text-white text-xs font-semibold px-2 py-1 rounded shadow">
@@ -194,7 +238,10 @@ export default function TournamentCard({
                     aria-disabled={regClosed}
                     tabIndex={regClosed ? -1 : 0}
                     data-interactive="true"
-                    onClick={(e) => { if (regClosed) e.preventDefault(); stopAll(e) }}
+                    onClick={(e) => {
+                      if (regClosed) e.preventDefault()
+                      stopAll(e)
+                    }}
                     onMouseDown={stopAll}
                     onKeyDown={stopAll}
                   >
@@ -233,7 +280,6 @@ export default function TournamentCard({
             onMouseDown={stopAll}
             onKeyDown={stopAll}
           >
-            {/* Coming soon toggle */}
             <label
               className="flex items-center gap-2"
               data-interactive="true"
@@ -254,7 +300,6 @@ export default function TournamentCard({
               />
             </label>
 
-            {/* Registration switch */}
             <div
               className="flex items-center gap-2"
               data-interactive="true"
@@ -266,17 +311,15 @@ export default function TournamentCard({
               <button
                 type="button"
                 onClick={toggleRegistration}
-                className={`relative inline-flex h-5 w-10 items-center rounded-full ${
-                  t.registration_status === 'open' ? 'bg-emerald-600' : 'bg-neutral-600'
-                }`}
+                className={`relative inline-flex h-5 w-10 items-center rounded-full ${t.registration_status === 'open' ? 'bg-emerald-600' : 'bg-neutral-600'
+                  }`}
                 data-interactive="true"
                 onMouseDown={stopAll}
                 onKeyDown={stopAll}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    t.registration_status === 'open' ? 'translate-x-5' : 'translate-x-1'
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${t.registration_status === 'open' ? 'translate-x-5' : 'translate-x-1'
+                    }`}
                 />
               </button>
             </div>

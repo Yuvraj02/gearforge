@@ -10,10 +10,10 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://your-domain.com"), // ← change to your prod URL
+  metadataBase: new URL("https://www.gearforge.in/"), // ← change to your prod URL
   title: {
-    default: "GearForge",
-    template: "%s · GearForge",
+    default: "GearForge - An Online E-sports Platform",
+    template: "%s · GearForge - An Online E-sports Platform",
   },
   description:
     "Esports built for fairness. Run and play division-based tournaments, manage teams, and track results in one place.",
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "GearForge",
-    title: "GearForge",
+    siteName: "GearForge - An Online E-sports Platform",
+    title: "GearForge - An Online E-sports Platform",
     description:
       "Esports built for fairness. Run and play division-based tournaments, manage teams, and track results in one place.",
     url: "/",
@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <NavBar />
           <SidePanel />
-          <div className="pt-16 md:ml-60">{children}</div>
+          <div className="pt-14 md:ml-60">{children}</div>
         </Providers>
       </body>
     </html>

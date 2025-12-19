@@ -114,6 +114,7 @@ export async function resetPassword(user_id: string, password: string) {
 }
 
 export async function requestPasswordReset(email: string) {
+  console.log("Triggered for :", email, "at :", API_BASE_URL)
   const response = await axios.post(
     `${API_BASE_URL}/reset_pwd_req`,
     { email: email },

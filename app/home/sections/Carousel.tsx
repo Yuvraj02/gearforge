@@ -5,32 +5,48 @@ import Image from 'next/image';
 
 export default function Carousel() {
   const [ready, setReady] = React.useState(false);
+  const [showArrow, setShowArrow] = React.useState(true);
+
+  React.useEffect(() => {
+    const onScroll = () => {
+      setShowArrow(window.scrollY <= 40);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
-    <section
-      className="hero"
-      style={{
-        marginTop: 'calc(-1 * var(--nav-h, 64px))',
-        paddingTop: 'var(--nav-h, 64px)',
-      }}
-    >
-      {/* Background image */}
-      <div className="bg-wrap">
+    <section className="hero">
+      {/* desktop bg */}
+      <div className="bg-wrap bg-desktop">
         <Image
-          src="/r6.png"
+          src="/bgmi-mobile.jpg"
           alt=""
           fill
-          sizes="100vw"
           priority
-          style={{ objectFit: 'cover' }}
+          sizes="100vw"
+          style={{ objectFit: 'cover', objectPosition: 'top' }}
           onLoadingComplete={() => setReady(true)}
         />
       </div>
 
-      {/* Overlay */}
+      {/* mobile bg */}
+      <div className="bg-wrap bg-mobile">
+        <Image
+          src="/bgmi-mobile.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: 'cover', objectPosition: 'top' }}
+          onLoadingComplete={() => setReady(true)}
+        />
+      </div>
+
+      {/* overlay */}
       <div className={`overlay ${ready ? 'show' : ''}`} />
 
-      {/* Foreground */}
+      {/* content */}
       <div className="inner">
         <div className={`copy ${ready ? 'reveal' : 'hidden'}`}>
           <h1 className="title fade-up delay-1">Welcome to GearForge</h1>
@@ -41,23 +57,52 @@ export default function Carousel() {
         </div>
       </div>
 
+      {/* scroll arrow */}
+      <button
+        type="button"
+        onClick={() => {
+          const next = document.querySelector('#below-hero');
+          if (next) next.scrollIntoView({ behavior: 'smooth' });
+        }}
+        className={`scroll-arrow ${showArrow ? 'scroll-arrow--show' : 'scroll-arrow--hide'}`}
+        aria-label="Scroll to content"
+      >
+        <span className="chevron" />
+      </button>
+
       <style jsx>{`
         .hero {
           position: relative;
           width: 100%;
-          min-height: 18rem;
-          height: 64vh;
+          background: #0b0b0f;
           overflow: hidden;
-          background-color: #0b0b0f;
-        }
-        @media (max-width: 768px) {
-          .hero { height: 48vh; }
-        }
-        @media (max-width: 420px) {
-          .hero { height: 44vh; }
+          height: calc(100vh - 60px); /* desktop */
         }
 
-        .bg-wrap { position: absolute; inset: 0; }
+        .bg-wrap {
+          position: absolute;
+          inset: 0;
+        }
+        .bg-desktop {
+          display: block;
+        }
+        .bg-mobile {
+          display: none;
+        }
+
+        /* mobile layout */
+        @media (max-width: 768px) {
+          .hero {
+            height: auto;
+            min-height: 55vh;
+          }
+          .bg-desktop {
+            display: none;
+          }
+          .bg-mobile {
+            display: block;
+          }
+        }
 
         .overlay {
           position: absolute;
@@ -72,7 +117,21 @@ export default function Carousel() {
           transition: opacity 250ms ease;
           pointer-events: none;
         }
-        .overlay.show { opacity: 1; }
+        .overlay.show {
+          opacity: 1;
+        }
+
+        /* darker overlay on mobile */
+        @media (max-width: 768px) {
+          .overlay.show {
+            background: linear-gradient(
+              to top,
+              rgba(0, 0, 0, 0.78),
+              rgba(0, 0, 0, 0.55),
+              rgba(0, 0, 0, 0.35)
+            );
+          }
+        }
 
         .inner {
           position: relative;
@@ -80,50 +139,129 @@ export default function Carousel() {
           height: 100%;
           display: flex;
           align-items: center;
-          padding: 1rem;
+          padding: 1rem 1.25rem;
         }
-        @media (min-width: 640px) { .inner { padding: 2rem; } }
-        @media (min-width: 1024px) { .inner { padding: 4rem; } }
+        @media (min-width: 640px) {
+          .inner {
+            padding: 2rem 2.5rem;
+          }
+        }
+        @media (min-width: 1024px) {
+          .inner {
+            padding: 3.5rem 2.5rem;
+          }
+        }
+
+        /* mobile centering */
+        @media (max-width: 768px) {
+          .inner {
+            min-height: 55vh;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            padding-top: 2.4rem;
+            padding-bottom: 3.2rem;
+          }
+        }
 
         .copy {
           width: 100%;
-          max-width: min(90ch, 92vw);
-          /* Prevent overflow on tiny screens */
-          overflow-wrap: anywhere;
-          word-break: break-word;
-          text-wrap: balance;
+          max-width: min(64rem, 92vw);
         }
-        .hidden { visibility: hidden; opacity: 0; }
-        .reveal { visibility: visible; }
+
+        /* fix animation: actually fade in */
+        .hidden {
+          visibility: hidden;
+          opacity: 0;
+        }
+        .reveal {
+          visibility: visible;
+          opacity: 1;
+          transition: opacity 250ms ease;
+        }
 
         .title {
           margin: 0;
           color: #fff;
           font-weight: 800;
           letter-spacing: -0.02em;
-          line-height: 1.1;
-          /* Smaller lower bound on mobile */
-          font-size: clamp(1.4rem, 6vw + 0.25rem, 3.2rem);
+          line-height: 1.05;
+          font-size: clamp(1.75rem, 5.2vw, 3.2rem);
         }
         .subtitle {
-          margin-top: 0.6rem;
-          color: rgba(255, 255, 255, 0.92);
+          margin-top: 0.7rem;
+          color: rgba(255, 255, 255, 0.9);
           line-height: 1.5;
-          /* Scale down a bit more on small screens */
-          font-size: clamp(0.9rem, 3.2vw + 0.5rem, 1.2rem);
-          max-width: 70ch;
+          font-size: clamp(0.95rem, 3.2vw, 1.2rem);
+          max-width: 40rem;
         }
-        @media (max-width: 480px) {
-          .subtitle { max-width: 100%; }
+        @media (max-width: 768px) {
+          .subtitle {
+            max-width: 100%;
+          }
+        }
+
+        .scroll-arrow {
+          position: absolute;
+          left: 50%;
+          bottom: 1rem;
+          transform: translateX(-50%);
+          background: transparent;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          z-index: 2;
+          transition: opacity 200ms ease, transform 200ms ease;
+        }
+        .scroll-arrow--show {
+          opacity: 1;
+          pointer-events: auto;
+          transform: translateX(-50%);
+        }
+        .scroll-arrow--hide {
+          opacity: 0;
+          pointer-events: none;
+          transform: translateX(-50%) translateY(6px);
+        }
+
+        .chevron {
+          display: block;
+          width: 14px;
+          height: 14px;
+          border-right: 2px solid #fff;
+          border-bottom: 2px solid #fff;
+          transform: rotate(45deg);
+          animation: bounce 1.2s infinite;
+        }
+        @keyframes bounce {
+          0%,
+          100% {
+            transform: translateY(0) rotate(45deg);
+          }
+          50% {
+            transform: translateY(4px) rotate(45deg);
+          }
         }
 
         @keyframes fadeUp {
-          0% { opacity: 0; transform: translateY(16px); }
-          100% { opacity: 1; transform: translateY(0); }
+          0% {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        .fade-up { animation: fadeUp 0.6s ease-out both; }
-        .delay-1 { animation-delay: 100ms; }
-        .delay-2 { animation-delay: 300ms; }
+        .fade-up {
+          animation: fadeUp 0.6s ease-out both;
+        }
+        .delay-1 {
+          animation-delay: 120ms;
+        }
+        .delay-2 {
+          animation-delay: 280ms;
+        }
       `}</style>
     </section>
   );
