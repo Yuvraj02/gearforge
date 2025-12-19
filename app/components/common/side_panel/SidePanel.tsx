@@ -10,6 +10,8 @@ import React, { useEffect } from 'react';
 import { togglePanel } from './sidePanelSlice';
 import { usePathname } from 'next/navigation';
 import { MdSportsEsports } from "react-icons/md";
+import { MdPeople } from "react-icons/md";
+import { MdMailOutline } from "react-icons/md";
 
 export default function SidePanel() {
   const dispatch = useAppDispatch();
@@ -100,6 +102,18 @@ export default function SidePanel() {
             <div className={panelItem}>
               <MdSportsEsports />
               <div>Browse Games</div>
+            </div>
+          </Link>
+          <Link href="/for_organizers" onClick={closeOnMobile}>
+            <div className={panelItem}>
+              <MdPeople />
+              <div>For Organizers</div>
+            </div>
+          </Link>
+          <Link href="/contact_us" onClick={closeOnMobile}>
+            <div className={panelItem}>
+              <MdMailOutline />
+              <div>Contact Us</div>
             </div>
           </Link>
           
