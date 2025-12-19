@@ -92,7 +92,7 @@ export default function EsportsDescription(): React.ReactElement {
             </Link>
 
             <Link
-              href="https://discord.gg/J8cS4Tds"
+              href="https://discord.gg/CCyNaSNAgm"
               className="inline-flex items-center gap-2 px-4 py-2 border border-white/20 text-white rounded-md transition-colors duration-200 hover:bg-[#5865F2] hover:text-white"
             >
               Join Discord community
