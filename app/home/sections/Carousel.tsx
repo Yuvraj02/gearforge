@@ -15,6 +15,20 @@ export default function Carousel() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const scrollDown = React.useCallback(() => {
+    const next = document.querySelector('#below-hero') as HTMLElement | null;
+
+    if (next) {
+      next.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    // fallback: scroll exactly one hero height
+    const hero = document.querySelector('.hero') as HTMLElement | null;
+    const by = hero?.getBoundingClientRect().height ?? window.innerHeight * 0.7;
+    window.scrollBy({ top: by, behavior: 'smooth' });
+  }, []);
+
   return (
     <section className="hero">
       {/* desktop bg */}
@@ -48,9 +62,10 @@ export default function Carousel() {
 
       {/* content */}
       <div className="inner">
+        {/* key fix: animation class only applies AFTER ready */}
         <div className={`copy ${ready ? 'reveal' : 'hidden'}`}>
-          <h1 className="title fade-up delay-1">Welcome to GearForge</h1>
-          <p className="subtitle fade-up delay-2">
+          <h1 className={`title ${ready ? 'fade-up delay-1' : ''}`}>Welcome to GearForge</h1>
+          <p className={`subtitle ${ready ? 'fade-up delay-2' : ''}`}>
             Build your squad. Climb your division. Win real tournaments. GearForge levels the field
             so talent decides the outcome.
           </p>
@@ -60,10 +75,7 @@ export default function Carousel() {
       {/* scroll arrow */}
       <button
         type="button"
-        onClick={() => {
-          const next = document.querySelector('#below-hero');
-          if (next) next.scrollIntoView({ behavior: 'smooth' });
-        }}
+        onClick={scrollDown}
         className={`scroll-arrow ${showArrow ? 'scroll-arrow--show' : 'scroll-arrow--hide'}`}
         aria-label="Scroll to content"
       >
@@ -169,7 +181,6 @@ export default function Carousel() {
           max-width: min(64rem, 92vw);
         }
 
-        /* fix animation: actually fade in */
         .hidden {
           visibility: hidden;
           opacity: 0;

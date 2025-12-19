@@ -67,7 +67,7 @@ export default function TournamentCard({
   const progress = totalSlots > 0 ? Math.round((registered / totalSlots) * 100) : 0
   const isFull = totalSlots > 0 && registered >= totalSlots
   const showAdminControls = !!isAdmin && t.status === 'upcoming'
-
+  // console.log(t.max_team_size)
   // ---------- IMAGE NORMALIZATION + DEBUG ----------
   const rawCover = (t.cover ?? '').trim()
 
@@ -105,6 +105,9 @@ export default function TournamentCard({
     registration_status?: 'open' | 'close'
     coming_soon?: boolean
   }
+
+
+
   const qc = useQueryClient()
   const mutateMeta = useMutation({
     mutationKey: ['patch_tournament_meta', t.tournament_id],
@@ -118,6 +121,10 @@ export default function TournamentCard({
       alert('Update failed. Please try again.')
     },
   })
+
+  const formatEntry = (v: number | string | null | undefined) => {
+    return toNumber(v) === 0 ? "Free" : formatINR(v);
+  };
 
   function toggleComingSoon(next: boolean) {
     mutateMeta.mutate({
@@ -220,7 +227,7 @@ export default function TournamentCard({
             </div>
 
             <div className="mt-2 flex items-center justify-between text-sm text-neutral-300">
-              <span>Entry: {formatINR(t.entry_fee)}</span>
+              <span>Entry: {formatEntry(t.entry_fee)}</span>
               <span>Prize: {formatINR(t.pool_price)}</span>
             </div>
 
@@ -239,8 +246,21 @@ export default function TournamentCard({
                     tabIndex={regClosed ? -1 : 0}
                     data-interactive="true"
                     onClick={(e) => {
-                      if (regClosed) e.preventDefault()
-                      stopAll(e)
+                      if (regClosed) e.preventDefault();
+
+                      // ✅ store preset for register page
+                      try {
+                        sessionStorage.setItem(
+                          `gf_tournament_preset_${t.tournament_id}`,
+                          JSON.stringify({
+                            tournament_division: t.tournament_division ?? null,
+                            min_team_size: t.min_team_size ?? null,
+                            max_team_size: t.max_team_size ?? null,
+                          })
+                        );
+                      } catch { }
+
+                      stopAll(e);
                     }}
                     onMouseDown={stopAll}
                     onKeyDown={stopAll}

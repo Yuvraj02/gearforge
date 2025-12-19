@@ -1,6 +1,6 @@
 'use client'
 import { login, register, RegistrationData } from "@/app/api"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -25,6 +25,7 @@ function Register() {
     const [modalMsg, setModalMsg] = useState("");
     const [isUserExist, setUserExists] = useState<boolean>(false)
     const [isEmailExist, setEmailExist] = useState<boolean>(false)
+    const [enableButtons, setEnableButtons] = useState<boolean>(true) //These will be used to disable the buttons while user registers and response is returned from the server
 
     const handleNameInput = (e: ChangeEvent<HTMLInputElement>) => { setName(e.target.value) }
     const handleUserNameInput = (e: ChangeEvent<HTMLInputElement>) => {
@@ -56,26 +57,35 @@ function Register() {
     }, [confirmPassword, password, setConfirmPassword, setPassword])
 
     const newUserData: RegistrationData = { user_id: uuidv4(), name: name, email: email, user_name: userName, password: password }
+    const qc = useQueryClient();
+    const loginUser = useMutation({
+        mutationKey: ['login_user'],
+        mutationFn: async () => login({ email: email, password: password }),
+        onSuccess: async () => {
+            //  make sure anything that depends on auth refetches
+            await qc.invalidateQueries(); // or target only the ones you need
 
-     const loginUser = useMutation({
-        mutationKey:['login_user'],
-        mutationFn:async()=> login({email:email, password:password}),
-        onSuccess:()=>{
-            router.push("/")
+            // let token write/store hydration finish before route renders
+            await new Promise((r) => setTimeout(r, 0));
+
+            router.push("/");
+            router.refresh();
         }
     })
-    
+
     const registerUser = useMutation({
         mutationKey: ['register_user'],
         mutationFn: async () => register(newUserData),
         onError: (error: AxiosError) => {
             if (error.response?.status === 403) {
                 setUserExists(true)
+                setEnableButtons(true)
             }
 
-            if(error.response?.status==409){
+            if (error.response?.status == 409) {
                 console.log(error.code)
                 setEmailExist(true)
+                setEnableButtons(true)
             }
         },
         onSuccess: () => {
@@ -90,14 +100,17 @@ function Register() {
 
         if (password.length === 0) {
             showError("Password cannot be empty")
+            setEnableButtons(true)
             return
         }
 
         if (password.length < 8) {
             showError("Password must be at least 8 characters long")
+            setEnableButtons(true)
             return
         }
 
+        setEnableButtons(false)
         registerUser.mutate()
     }
 
@@ -116,7 +129,7 @@ function Register() {
             <div className="w-full">
                 <input onChange={handleEmailInput} className="p-2 bg-[#161719] rounded w-full" placeholder="Email"></input>
             </div>
-              <span className={!isEmailExist ? "hidden" : ""}><p className="text-red-600" >Email Already Exists! Try Signing In</p></span>
+            <span className={!isEmailExist ? "hidden" : ""}><p className="text-red-600" >Email Already Exists! Try Signing In</p></span>
             <div className="relative w-full ">
                 <input onChange={handlePasswordInput} className="p-2 bg-[#161719] rounded w-full" type={isPasswordVisible ? "text" : "password"} placeholder="Password"></input>
                 <div onClick={() => setPasswordVisible(prevState => !prevState)} className="absolute right-3 p-1 top-1/2 -translate-y-1/2 hover:bg-neutral-700 hover:rounded-2xl cursor-pointer text-white select-none text-xl">{isPasswordVisible ? <MdVisibility /> : <MdVisibilityOff />}</div>
@@ -127,7 +140,7 @@ function Register() {
                 <div onClick={() => setConfirmPasswordVisibile(prevState => !prevState)} className="absolute right-3 p-1 top-1/2 -translate-y-1/2 hover:bg-neutral-700 hover:rounded-2xl  cursor-pointer text-white select-none text-xl">{isConfirmPasswordVisible ? <MdVisibility /> : <MdVisibilityOff />}</div>
             </div>
             <span>{!isSamePassword ? <p className="text-red-600" >Passwords do not match</p> : ""}</span>
-            <button onClick={handleOnRegisterClick} className="border rounded-2xl p-2 transition-all duration-200 ease-in-out hover:bg-blue-500 hover:text-white cursor-pointer">Register</button>
+            <button onClick={enableButtons ? handleOnRegisterClick : () => { }} className={enableButtons ? "border rounded-2xl p-2 transition-all duration-200 ease-in-out hover:bg-blue-500 hover:text-white cursor-pointer" : "border rounded-2xl p-2 bg-gray-600 text-gray-800 transition-all cursor-not-allowed"}>Register</button>
             <p className="self-center">or You can sign in with</p>
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="w-full border rounded flex justify-center items-center p-2 cursor-pointer"><Image src={"/google-symbol.png"} height={30} width={30} alt="Google Logo" /><p>Google</p></div>

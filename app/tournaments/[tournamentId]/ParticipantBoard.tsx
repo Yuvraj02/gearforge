@@ -85,20 +85,18 @@ export default function ParticipantsBoard({
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 5 } });
   const sensors = useSensors(mouseSensor, touchSensor);
 
-  // DO NOT default to [] here — let it be undefined until data arrives
   const q = useQuery({
     queryKey: ['participants', tournamentId],
     queryFn: async (): Promise<RawTeam[]> => getParticipants(tournamentId),
     retry: 1,
   });
-  const participantsDataRaw = q.data; // may be undefined
+  const participantsDataRaw = q.data;
   const participantsLoading = q.isLoading;
   const participantsError = q.isError;
 
   const [pool, setPool] = React.useState<Team[]>([]);
   const [ranking, setRanking] = React.useState<Array<Team | null>>(Array(SLOT_COUNT).fill(null));
 
-  // Guarded, one-time init when real data appears or actually changes
   const idsRef = React.useRef<string>('');
   React.useEffect(() => {
     if (!participantsDataRaw || !Array.isArray(participantsDataRaw)) return;
@@ -106,11 +104,10 @@ export default function ParticipantsBoard({
     const normalized = normalizeTeams(participantsDataRaw);
     const newIds = normalized.map((t) => t.teamId).join(',');
 
-    if (newIds === idsRef.current) return; // nothing changed
+    if (newIds === idsRef.current) return;
     idsRef.current = newIds;
 
     setPool(normalized);
-    // reset ranking only if it already contained something
     setRanking((prev) => (prev.some((t) => t !== null) ? Array(SLOT_COUNT).fill(null) : prev));
   }, [participantsDataRaw]);
 
@@ -242,7 +239,7 @@ export default function ParticipantsBoard({
       onDragEnd={handleDragEnd}
     >
       {showReadOnlyGrid ? (
-        <div className="w-full flex items-start justify-center p-6">
+        <div className="w-full flex items-start justify-center p-3 sm:p-6">
           <Participants
             teams={pool}
             loading={participantsLoading}
@@ -250,12 +247,13 @@ export default function ParticipantsBoard({
             onCardContextMenu={() => {}}
             draggable={false}
             droppableToPool={false}
-            gridLikeRanking
+            gridLikeRanking={false} // ✅ list on mobile (and desktop read-only too)
           />
         </div>
       ) : (
         <>
-          <div className="w-full flex items-start justify-center gap-8 p-6">
+          {/* ✅ Mobile: stack, Desktop: side-by-side */}
+          <div className="w-full flex flex-col lg:flex-row items-stretch lg:items-start justify-center gap-4 lg:gap-8 p-3 sm:p-6">
             <Participants
               teams={pool}
               loading={participantsLoading}
@@ -263,15 +261,17 @@ export default function ParticipantsBoard({
               onCardContextMenu={(teamId, e) => openMenu(teamId, e)}
               draggable
               droppableToPool
-              gridLikeRanking={false}
+              gridLikeRanking={false} // ✅ always list for pool
             />
+
+            {/* ✅ Ranking: list on mobile, grid on lg+ */}
             <RankingGrid
               slots={ranking}
               onSlotContextMenu={(teamId, e) => teamId && openMenu(teamId, e)}
             />
           </div>
 
-          <div className="flex justify-center gap-4 pb-6">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-3 pb-6">
             <button
               onClick={() => finishTournament.mutate()}
               disabled={finishTournament.isPending || !editable}
@@ -364,7 +364,7 @@ const Participants = React.memo(function Participants({
   return (
     <div
       ref={droppableToPool ? setColumnRef : undefined}
-      className="flex flex-col gap-3 p-4 bg-white/5 rounded-lg"
+      className="flex flex-col gap-3 p-4 bg-white/5 rounded-lg w-full lg:w-[420px]"
     >
       <h3 className="text-white/90 font-medium">
         {gridLikeRanking ? 'Participants' : 'Teams'}
@@ -382,7 +382,7 @@ const Participants = React.memo(function Participants({
         )}
 
         {!loading && !error && (
-          <div className={gridLikeRanking ? 'grid grid-cols-5 gap-3' : 'grid grid-cols-1 gap-2'}>
+          <div className={gridLikeRanking ? 'grid grid-cols-5 gap-3' : 'flex flex-col gap-2'}>
             {teams.map((team) => (
               <ParticipantCard
                 key={team.teamId}
@@ -496,9 +496,18 @@ function RankingGrid({
   onSlotContextMenu: (teamId: string | null, e: React.MouseEvent) => void;
 }) {
   return (
-    <div className="p-3 bg-white/5 rounded-lg">
+    <div className="p-3 bg-white/5 rounded-lg w-full">
       <h3 className="text-white/90 font-medium mb-3">Ranking (Top 25)</h3>
-      <div className="grid grid-cols-5 gap-3">
+
+      {/* ✅ Mobile list */}
+      <div className="flex flex-col gap-2 lg:hidden">
+        {slots.map((team, index) => (
+          <SlotRow key={`slot-row-${index}`} index={index} team={team} onContextMenu={onSlotContextMenu} />
+        ))}
+      </div>
+
+      {/* ✅ Desktop grid */}
+      <div className="hidden lg:grid grid-cols-5 gap-3">
         {slots.map((team, index) => (
           <SlotCard key={`slot-${index}`} index={index} team={team} onContextMenu={onSlotContextMenu} />
         ))}
@@ -506,6 +515,38 @@ function RankingGrid({
     </div>
   );
 }
+
+const SlotRow = React.memo(function SlotRow({
+  index,
+  team,
+  onContextMenu,
+}: {
+  index: number;
+  team: Team | null;
+  onContextMenu: (teamId: string | null, e: React.MouseEvent) => void;
+}) {
+  const droppableId = `slot-${index}`;
+  const { setNodeRef, isOver } = useDroppable({ id: droppableId });
+
+  return (
+    <div
+      ref={setNodeRef}
+      onContextMenu={(e) => onContextMenu(team?.teamId ?? null, e)}
+      className={`border rounded-xl px-3 py-3 transition-all ${
+        isOver ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-white/10'
+      } text-white shadow-sm flex items-center justify-between gap-3`}
+    >
+      <div className="text-xs opacity-70 shrink-0 w-[70px]">#{index + 1}</div>
+      <div className="text-sm flex-1 min-w-0">
+        {team ? (
+          <span className="block truncate">{team.team_name}</span>
+        ) : (
+          <em className="text-white/60 not-italic">Drop team</em>
+        )}
+      </div>
+    </div>
+  );
+});
 
 const SlotCard = React.memo(function SlotCard({
   index,
