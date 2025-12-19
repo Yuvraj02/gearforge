@@ -92,7 +92,7 @@ export default function TournamentsPage(): React.ReactElement {
     data && data.status === 'success' && Array.isArray(data.data)
       ? data.data.map(normalize)
       : [];
-
+  
   const live = list.filter((t) => t.status === 'live');
   const upcoming = list
     .filter((t) => t.status === 'upcoming')
@@ -105,15 +105,22 @@ export default function TournamentsPage(): React.ReactElement {
     t: Tournament,
     options?: { showRegister?: boolean; ariaLabel?: string }
   ) => {
-    const go = () => router.push(`/tournaments/${t.tournament_id}`);
+    const isComingSoon = !!t.coming_soon;
+
+    const go = () => {
+      if (isComingSoon) return;  // ✅ block
+      router.push(`/tournaments/${t.tournament_id}`);
+    };
 
     const onClickCard = (e: React.MouseEvent) => {
+      if (isComingSoon) return;  // ✅ block
       const el = e.target as HTMLElement;
       if (el.closest('[data-interactive="true"]')) return;
       go();
     };
 
     const onKey = (e: React.KeyboardEvent) => {
+      if (isComingSoon) return;  // ✅ block
       const el = e.target as HTMLElement;
       if (el.closest('[data-interactive="true"]')) return;
       if (e.key === 'Enter' || e.key === ' ') {
@@ -125,17 +132,27 @@ export default function TournamentsPage(): React.ReactElement {
     return (
       <div key={t.tournament_id} className="inline-block mr-3 align-top overflow-visible">
         <div
-          role="link"
-          tabIndex={0}
+          role={isComingSoon ? undefined : "link"}
+          tabIndex={isComingSoon ? -1 : 0}
+          aria-disabled={isComingSoon ? true : undefined}
           onClick={onClickCard}
           onKeyDown={onKey}
           aria-label={
             options?.ariaLabel ??
-            (t.status === 'ended' ? `View results for ${t.name}` : `Open ${t.name}`)
+            (isComingSoon ? `${t.name} coming soon` :
+              (t.status === 'ended' ? `View results for ${t.name}` : `Open ${t.name}`))
           }
-          className="group rounded-xl overflow-visible cursor-pointer select-none transition-colors duration-150 focus:outline-none"
+          className={[
+            "group rounded-xl overflow-visible select-none transition-colors duration-150 focus:outline-none",
+            isComingSoon ? "cursor-not-allowed opacity-90" : "cursor-pointer",
+          ].join(" ")}
         >
-          <div className="rounded-xl p-[1px] bg-transparent transition-colors duration-150 group-hover:bg-white/12 group-focus-visible:bg-white/20">
+          <div
+            className={[
+              "rounded-xl p-[1px] bg-transparent transition-colors duration-150",
+              isComingSoon ? "" : "group-hover:bg-white/12 group-focus-visible:bg-white/20",
+            ].join(" ")}
+          >
             <TournamentCard
               t={t}
               live={t.status === 'live'}
@@ -147,6 +164,7 @@ export default function TournamentsPage(): React.ReactElement {
       </div>
     );
   };
+
 
   const listNode = (items: Tournament[], showRegister = false): React.ReactElement => (
     <div className="overflow-x-auto overflow-y-visible">

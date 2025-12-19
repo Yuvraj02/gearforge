@@ -12,45 +12,6 @@ import { Tournament } from "@/app/models/tournament_model";
 import { getUserByEmail } from "@/app/api";
 import { useSearchParams } from "next/navigation";
 
-// ---------- Minimal Razorpay typings ----------
-type RazorpaySuccessResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
-};
-
-type RazorpayPrefill = {
-  name?: string;
-  email?: string;
-  contact?: string;
-};
-
-type RazorpayOptions = {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  prefill?: RazorpayPrefill;
-  notes?: Record<string, string>;
-  handler: (response: RazorpaySuccessResponse) => void;
-  modal?: { ondismiss?: () => void };
-  theme?: { color?: string };
-};
-
-type RazorpayInstance = {
-  open: () => void;
-  on?: (event: string, cb: (e: unknown) => void) => void;
-};
-type RazorpayConstructor = new (options: RazorpayOptions) => RazorpayInstance;
-
-declare global {
-  interface Window {
-    Razorpay?: RazorpayConstructor;
-  }
-}
-
 type Props = {
   tournamentId?: string;
   preset?: Partial<Tournament>;
@@ -63,21 +24,37 @@ export default function RegisterTournament({ tournamentId: propTid, preset }: Pr
   // --------- Auth & tournament context ---------
   const searchParams = useSearchParams();
   const tournamentId = searchParams.get("tournament_id") ?? propTid ?? null;
+  // ✅ Pull preset from sessionStorage (set by TournamentCard) + merge with prop preset
+  const mergedPreset = React.useMemo(() => {
+    if (!tournamentId) return preset ?? undefined;
+
+    try {
+      const raw = sessionStorage.getItem(`gf_tournament_preset_${tournamentId}`);
+      const fromStorage = raw ? (JSON.parse(raw) as Partial<Tournament>) : undefined;
+
+      // prop preset wins if provided
+      return { ...(fromStorage ?? {}), ...(preset ?? {}) };
+    } catch {
+      return preset ?? undefined;
+    }
+  }, [tournamentId, preset]);
+
 
   const me = useAppSelector((s) => s.users.user);
   const isLoggedIn = useAppSelector((s) => s.users.isLoggedIn);
   const hasHydrated = useAppSelector((s) => s.users.hasHydrated);
 
-  const tournamentDivision = preset?.tournament_division ?? 3;
-  const maxSize = preset?.max_team_size ?? 5;
-  const minSize = preset?.min_team_size ?? 3;
+  const tournamentDivision = mergedPreset?.tournament_division ?? 3;
+  const maxSize = mergedPreset?.max_team_size ?? 5;
+  const minSize = mergedPreset?.min_team_size ?? 3;
+
 
   const captainDivision =
     typeof me?.division === "number"
       ? me.division
       : typeof me?.division_score === "number"
-      ? me.division_score!
-      : 3;
+        ? me.division_score!
+        : 3;
 
   const captainTooHigh = captainDivision < tournamentDivision;
 
@@ -153,8 +130,8 @@ export default function RegisterTournament({ tournamentId: propTid, preset }: Pr
         typeof user.division === "number"
           ? user.division
           : typeof user.division_score === "number"
-          ? user.division_score
-          : NaN;
+            ? user.division_score
+            : NaN;
 
       return username && Number.isFinite(division)
         ? { username, name, division: Number(division), user_id: user.user_id }
@@ -216,118 +193,53 @@ export default function RegisterTournament({ tournamentId: propTid, preset }: Pr
     players.every((p) => p.status === "verified") &&
     teamName.trim().length > 0;
 
-  // ---- Razorpay SDK loader ----
-  async function loadRazorpay(): Promise<boolean> {
-    if (typeof window === "undefined") return false;
-    if (document.getElementById("razorpay-sdk")) return true;
-    return new Promise<boolean>((resolve) => {
-      const script = document.createElement("script");
-      script.id = "razorpay-sdk";
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  }
-
-  // ---- Register + Payment flow (NO DB write until success) ----
-  type CreateOrderResponse = {
-    order: { id: string; amount: number; currency: string };
-    key: string;
-  };
-
+  // ---- Register flow (NO Razorpay) ----
   const registerMutation = useMutation<void, unknown, void>({
     mutationKey: ["register_team", tournamentId],
     mutationFn: async () => {
-      // Step 1: create order (no DB write)
-      const res = await fetch("/api/backend/payments/create-order", {
+      // Build exactly what backend expects:
+      //  - players: string[] of UUIDs
+      //  - team_captain: uuid
+      //  - team_captain_email: string
+      const player_ids = Array.from(
+        new Set(players.map((p) => p.user_id).filter((id): id is string => Boolean(id)))
+      );
+
+      const captainRow = players.find((p) => p.role === "captain");
+      const team_captain = captainRow?.user_id ?? me?.user_id ?? null;
+      const team_captain_email = captainRow?.email ?? me?.email ?? null;
+
+      const res = await fetch("/api/backend/register_team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tournamentId, amount: 100 }),
+        body: JSON.stringify({
+          tournamentId,
+          teamName,
+          players: player_ids,
+          team_captain,
+          team_captain_email,
+        }),
       });
-      if (!res.ok) throw new Error("Failed to create order");
-      const { order, key } = (await res.json()) as CreateOrderResponse;
 
-      if (!order?.id) {
-        console.error("Missing order_id in create-order response", { order });
-        throw new Error("order_id missing");
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Failed to register team");
+      }
+    },
+    onSuccess: () => {
+      localStorage.removeItem(STORAGE_KEY);
+      setConfirmOpen(false);
+      if (tournamentId) {
+        window.location.href = `/tournaments/${tournamentId}/success`;
+      } else {
+        window.location.href = `/tournaments/success`;
       }
 
-      // Step 2: load Razorpay + open checkout
-      const ok = await loadRazorpay();
-      if (!ok || !window.Razorpay) throw new Error("Razorpay SDK failed to load");
-
-      const options: RazorpayOptions = {
-        key,
-        amount: order.amount,
-        currency: order.currency,
-        name: "GearForge",
-        description: `Tournament registration: ${teamName}`,
-        order_id: order.id,
-        prefill: {
-          name: me?.user_name ?? "",
-          email: me?.email ?? "",
-        },
-        notes: {
-          tournamentId: tournamentId ?? "",
-          teamName,
-        },
-
-        // Step 3: on success -> verify + SAVE team
-        handler: async (response: RazorpaySuccessResponse) => {
-          // Build exactly what backend expects:
-          //  - players: string[] of UUIDs
-          //  - team_captain: uuid
-          //  - team_captain_email: string
-          const player_ids = Array.from(
-            new Set(players.map((p) => p.user_id).filter((id): id is string => Boolean(id)))
-          );
-
-          const captainRow = players.find((p) => p.role === "captain");
-          const team_captain = captainRow?.user_id ?? me?.user_id ?? null;
-          const team_captain_email = captainRow?.email ?? me?.email ?? null;
-
-          const verify = await fetch("/api/backend/register_team", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              tournamentId,
-              teamName,
-              players: player_ids, // <-- backend expects "players"
-              team_captain,
-              team_captain_email,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
-
-          if (!verify.ok) {
-            const msg = await verify.text();
-            alert(`Payment verified but registration failed:\n${msg}`);
-            return;
-          }
-
-          localStorage.removeItem(STORAGE_KEY);
-          setConfirmOpen(false);
-          window.location.href = `/tournaments/${tournamentId}/success`;
-        },
-        modal: {
-          ondismiss: () => {
-            // user closed → do nothing (no DB write)
-          },
-        },
-        theme: { color: "#3399cc" },
-      };
-
-      const rzp = new window.Razorpay(options);
-      // helpful diagnostics
-      rzp.on?.("payment.failed", (e) => {
-        // surface why it failed in test mode
-        console.error("payment.failed", e);
-        alert("Payment failed");
-      });
-      rzp.open();
+      if (tournamentId) sessionStorage.removeItem(`gf_tournament_preset_${tournamentId}`);
+    },
+    onError: (error) => {
+      const msg = error instanceof Error ? error.message : "Failed to register team";
+      alert(msg);
     },
   });
 
@@ -369,7 +281,8 @@ export default function RegisterTournament({ tournamentId: propTid, preset }: Pr
 
         {captainTooHigh && (
           <div className="rounded-xl border border-red-900 bg-red-950/40 text-red-300 px-4 py-3">
-            Your division ({captainDivision}) is higher than the tournament requirement ({tournamentDivision}). You cannot register for this tournament.
+            Your division ({captainDivision}) is higher than the tournament requirement (
+            {tournamentDivision}). You cannot register for this tournament.
           </div>
         )}
 
@@ -413,7 +326,9 @@ export default function RegisterTournament({ tournamentId: propTid, preset }: Pr
               />
             </div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Captain details are automatically filled and cannot be edited.</p>
+          <p className="text-xs text-gray-400 mt-2">
+            Captain details are automatically filled and cannot be edited.
+          </p>
         </div>
 
         {/* Players List */}
@@ -424,9 +339,10 @@ export default function RegisterTournament({ tournamentId: propTid, preset }: Pr
           <button
             onClick={() => setAdding(true)}
             disabled={captainTooHigh}
-            className={`px-3 py-2 rounded-lg ${
-              captainTooHigh ? "bg-[#222327] text-gray-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white"
-            }`}
+            className={`px-3 py-2 rounded-lg ${captainTooHigh
+                ? "bg-[#222327] text-gray-500 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-500 text-white"
+              }`}
             title={captainTooHigh ? "Captain ineligible for this tournament" : "Add a player"}
           >
             Add Player
@@ -451,20 +367,23 @@ export default function RegisterTournament({ tournamentId: propTid, preset }: Pr
           <button
             disabled={!canProceed || registerMutation.isPending}
             onClick={() => setConfirmOpen(true)}
-            className={`px-4 py-2 rounded-xl ${
-              !canProceed ? "bg-[#222327] text-gray-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white"
-            }`}
+            className={`px-4 py-2 rounded-xl ${!canProceed
+                ? "bg-[#222327] text-gray-500 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-500 text-white"
+              }`}
             title={
               captainTooHigh
                 ? "Captain’s division is higher than the tournament’s requirement"
                 : !teamName.trim()
-                ? "Enter your exact in-game team name"
-                : `You must have between ${minSize} and ${maxSize} verified players`
+                  ? "Enter your exact in-game team name"
+                  : `You must have between ${minSize} and ${maxSize} verified players`
             }
           >
             Review & Register
           </button>
-          <p className="text-xs text-gray-400 mt-2">You must have at least {minSize} verified players to proceed.</p>
+          <p className="text-xs text-gray-400 mt-2">
+            You must have at least {minSize} verified players to proceed.
+          </p>
         </div>
       </div>
 

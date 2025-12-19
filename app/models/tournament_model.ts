@@ -6,7 +6,7 @@ export interface Tournament {
   end_date: Date;
   cover?: string;
   max_team_size?: number;
-  min_team_size?:number;
+  min_team_size?: number;
   total_slots?: number;
   registered_slots?: number;
   registered_id?: string[];
